@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cesnet-models"
+version = "0.0.1"
+authors = [
+  {name = "Jan Luxemburk", email = "luxemburk@cesnet.cz"},
+  {name = "Karel Hynek", email = "hynekkar@cesnet.cz"},
+]
+maintainers = [
+  {name = "Jan Luxemburk", email = "luxemburk@cesnet.cz"},
+  {name = "Karel Hynek", email = "hynekkar@cesnet.cz"},
+]
+description = "Pre-trained neural networks for encrypted traffic classification"
+readme = "README.md"
+license = {text = "BSD-3-Clause"}
+keywords = [
+  "traffic classification",
+  "deep learning",
+  "models"
+]
+classifiers = [
+  "Programming Language :: Python :: 3.10",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: OS Independent",
+]
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "scikit-learn",
+  "torch>=1.10",
+]
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "build",
+  "jupyterlab",
+  "mkdocs-autorefs",
+  "mkdocs-material-extensions",
+  "mkdocs-material",
+  "mkdocs",                       
+  "mkdocstrings-python",
+  "mkdocstrings",
+  "twine",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/CESNET/cesnet-models"
+"Documentation" = "https://cesnet.github.io/cesnet-models/"
+"Bug Tracker" = "https://github.com/CESNET/cesnet-models/issues"
+
+[tool.setuptools]
+packages = [
+  "cesnet_models",
+]

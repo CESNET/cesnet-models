@@ -1,0 +1,167 @@
+from enum import Enum
+from typing import Optional
+
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+from torch import nn
+from typing_extensions import assert_never
+
+IPT_POS = 0
+DIR_POS = 1
+SIZE_POS = 2
+PHIST_BIN_COUNT = 8
+
+
+class ScalerEnum(str, Enum):
+    """Available scalers for flow statistics, packet sizes, and inter-packet times."""
+    STANDARD = "standard"
+    """Standardize features by removing the mean and scaling to unit variance - [`sklearn.preprocessing.StandardScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html)."""
+    ROBUST = "robust"
+    """Robust scaling with the median and the interquartile range - [`sklearn.preprocessing.RobustScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html)."""
+    MINMAX = "minmax"
+    """Scaling to a (0, 1) range - [`sklearn.preprocessing.MinMaxScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html)."""
+    def __str__(self): return self.value
+
+def set_scaler_attrs(scaler: StandardScaler | RobustScaler | MinMaxScaler, scaler_attrs: dict[str, list[float]]):
+    if isinstance(scaler, StandardScaler):
+        assert "mean_" in scaler_attrs and "scale_" in scaler_attrs
+        scaler.mean_ = np.array(scaler_attrs["mean_"])
+        scaler.scale_ = np.array(scaler_attrs["scale_"])
+    elif isinstance(scaler, RobustScaler):
+        assert "center_" in scaler_attrs and "scale_" in scaler_attrs
+        scaler.center_ = np.array(scaler_attrs["center_"])
+        scaler.scale_ = np.array(scaler_attrs["scale_"])
+    elif isinstance(scaler, MinMaxScaler):
+        assert "min_" in scaler_attrs and "scale_" in scaler_attrs
+        scaler.min_ = np.array(scaler_attrs["min_"])
+        scaler.scale_ = np.array(scaler_attrs["scale_"])
+    else:
+        assert_never(scaler)
+
+class ClipAndScalePPI(nn.Module):
+    psizes_scaler: StandardScaler | RobustScaler | MinMaxScaler
+    ipt_scaler: StandardScaler | RobustScaler | MinMaxScaler
+    pszies_min: int
+    psizes_max: int
+    ipt_min: int
+    ipt_max: int
+
+    def __init__(self,
+                 psizes_scaler_enum: ScalerEnum | str = ScalerEnum.STANDARD,
+                 ipt_scaler_enum: ScalerEnum | str = ScalerEnum.STANDARD,
+                 pszies_min: int = 1,
+                 psizes_max: int = 1500,
+                 ipt_min: int = 0,
+                 ipt_max: int = 65000,
+                 psizes_scaler_attrs: Optional[dict[str, list[float]]] = None,
+                 ipt_scaler_attrs: Optional[dict[str, list[float]]] = None) -> None:
+        super().__init__()
+        if psizes_scaler_enum == ScalerEnum.STANDARD:
+            self.psizes_scaler = StandardScaler()
+        elif psizes_scaler_enum == ScalerEnum.ROBUST:
+            self.psizes_scaler = RobustScaler()
+        elif psizes_scaler_enum == ScalerEnum.MINMAX:
+            self.psizes_scaler = MinMaxScaler()
+        else:
+            raise ValueError(f"psizes_scaler_enum must be one of {ScalerEnum.__members__}")
+        if ipt_scaler_enum == ScalerEnum.STANDARD:
+            self.ipt_scaler = StandardScaler()
+        elif ipt_scaler_enum == ScalerEnum.ROBUST:
+            self.ipt_scaler = RobustScaler()
+        elif ipt_scaler_enum == ScalerEnum.MINMAX:
+            self.ipt_scaler = MinMaxScaler()
+        else:
+            raise ValueError(f"ipt_scaler_enum must be one of {ScalerEnum.__members__}")
+        self.pszies_min = pszies_min
+        self.psizes_max = psizes_max
+        self.ipt_max = ipt_max
+        self.ipt_min = ipt_min
+        self._psizes_scaler_enum = psizes_scaler_enum
+        self._ipt_scaler_enum = ipt_scaler_enum
+
+        if psizes_scaler_attrs is None and ipt_scaler_attrs is None:
+            self.needs_fitting = True
+        elif psizes_scaler_attrs is not None and ipt_scaler_attrs is not None:
+            set_scaler_attrs(scaler=self.psizes_scaler, scaler_attrs=psizes_scaler_attrs)
+            set_scaler_attrs(scaler=self.ipt_scaler, scaler_attrs=ipt_scaler_attrs)
+            self.needs_fitting = False
+        else:
+            raise ValueError("psizes_scaler_attrs and ipt_scaler_attrs must be both set or both None")
+
+    def forward(self, x_ppi: np.ndarray) -> np.ndarray:
+        if self.needs_fitting:
+            raise ValueError("Scalers need to be fitted before using the ClipAndScalePPI transform")
+        x_ppi = x_ppi.transpose(0, 2, 1)
+        orig_shape = x_ppi.shape
+        ppi_channels = x_ppi.shape[-1]
+        x_ppi = x_ppi.reshape(-1, ppi_channels)
+        x_ppi[:, IPT_POS] = x_ppi[:, IPT_POS].clip(max=self.ipt_max, min=self.ipt_min)
+        x_ppi[:, SIZE_POS] = x_ppi[:, SIZE_POS].clip(max=self.psizes_max, min=self.pszies_min)
+        padding_mask = x_ppi[:, DIR_POS] == 0 # Mask of zero padding
+        x_ppi[:, IPT_POS] = self.ipt_scaler.transform(x_ppi[:, IPT_POS].reshape(-1, 1)).reshape(-1) # type: ignore
+        x_ppi[:, SIZE_POS] = self.psizes_scaler.transform(x_ppi[:, SIZE_POS].reshape(-1, 1)).reshape(-1) # type: ignore
+        x_ppi[padding_mask, IPT_POS] = 0
+        x_ppi[padding_mask, SIZE_POS] = 0
+        x_ppi = x_ppi.reshape(orig_shape).transpose(0, 2, 1)
+        return x_ppi
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(psizes_scaler={self._psizes_scaler_enum}, ipt_scaler={self._ipt_scaler_enum}, pszies_min={self.pszies_min}, psizes_max={self.psizes_max}, ipt_min={self.ipt_min}, ipt_max={self.ipt_max})"
+
+class ClipAndScaleFlowstats(nn.Module):
+    flowstats_scaler: StandardScaler | RobustScaler | MinMaxScaler
+    quantile_clip: float
+    flowstats_quantiles: Optional[list[float]]
+
+    def __init__(self,
+                 flowstats_scaler_enum: ScalerEnum | str = ScalerEnum.ROBUST,
+                 quantile_clip: float = 0.99,
+                 flowstats_quantiles: Optional[list[float]] = None,
+                 flowstats_scaler_attrs: Optional[dict[str, list[float]]] = None) -> None:
+        super().__init__()
+        if flowstats_scaler_enum == ScalerEnum.STANDARD:
+            self.flowstats_scaler = StandardScaler()
+        elif flowstats_scaler_enum == ScalerEnum.ROBUST:
+            self.flowstats_scaler = RobustScaler()
+        elif flowstats_scaler_enum == ScalerEnum.MINMAX:
+            self.flowstats_scaler = MinMaxScaler()
+        else:
+            raise ValueError(f"flowstats_scaler_enum must be one of {ScalerEnum.__members__}")
+        self.quantile_clip = quantile_clip
+        self._flowstats_scaler_enum = flowstats_scaler_enum
+
+        if flowstats_scaler_attrs is None and flowstats_quantiles is None:
+            self.needs_fitting = True
+        elif flowstats_scaler_attrs is not None and flowstats_quantiles is not None:
+            set_scaler_attrs(scaler=self.flowstats_scaler, scaler_attrs=flowstats_scaler_attrs)
+            self.flowstats_quantiles = flowstats_quantiles
+            self.needs_fitting = False
+        else:
+            raise ValueError("flowstats_quantiles and scaler_attrs must be both set or both None")
+
+    def forward(self, x_flowstats: np.ndarray) -> np.ndarray:
+        if self.needs_fitting:
+            raise ValueError("Scalers and quantiles need to be fitted before using this transform")
+        x_flowstats = x_flowstats.clip(min=0, max=self.flowstats_quantiles)
+        x_flowstats = self.flowstats_scaler.transform(x_flowstats) # type: ignore
+        return x_flowstats
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(flowstats_scaler={self._flowstats_scaler_enum}, quantile_clip={self.quantile_clip})"
+
+class NormalizeHistograms(nn.Module):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x_flowstats_phist: np.ndarray) -> np.ndarray:
+        src_sizes_pkt_count = x_flowstats_phist[:, :PHIST_BIN_COUNT].sum(axis=1)[:, np.newaxis]
+        dst_sizes_pkt_count = x_flowstats_phist[:, PHIST_BIN_COUNT:(2*PHIST_BIN_COUNT)].sum(axis=1)[:, np.newaxis]
+        np.divide(x_flowstats_phist[:, :PHIST_BIN_COUNT], src_sizes_pkt_count, out=x_flowstats_phist[:, :PHIST_BIN_COUNT], where=src_sizes_pkt_count != 0)
+        np.divide(x_flowstats_phist[:, PHIST_BIN_COUNT:(2*PHIST_BIN_COUNT)], dst_sizes_pkt_count, out=x_flowstats_phist[:, PHIST_BIN_COUNT:(2*PHIST_BIN_COUNT)], where=dst_sizes_pkt_count != 0)
+        np.divide(x_flowstats_phist[:, (2*PHIST_BIN_COUNT):(3*PHIST_BIN_COUNT)], src_sizes_pkt_count - 1, out=x_flowstats_phist[:, (2*PHIST_BIN_COUNT):(3*PHIST_BIN_COUNT)], where=src_sizes_pkt_count > 1)
+        np.divide(x_flowstats_phist[:, (3*PHIST_BIN_COUNT):(4*PHIST_BIN_COUNT)], dst_sizes_pkt_count - 1, out=x_flowstats_phist[:, (3*PHIST_BIN_COUNT):(4*PHIST_BIN_COUNT)], where=dst_sizes_pkt_count > 1)
+        return x_flowstats_phist
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
