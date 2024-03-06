@@ -75,26 +75,71 @@ class MM_CESNET_QUIC1_Weights(WeightsEnum):
     )
     DEFAULT = CESNET_QUIC22_Week1
 
-def mm_cesnet_quic1(weights: Optional[MM_CESNET_QUIC1_Weights] = None,
+def mm_cesnet_v2(weights: Optional[MM_CESNET_QUIC1_Weights] = None,
                       model_dir: Optional[str] = None,
                       num_classes: Optional[int] = None,
                       flowstats_input_size: Optional[int] = None,
                       ppi_input_channels: Optional[int] = None,
                       ) -> Multimodal_CESNET:
-    v1_model_configuration = {
+    """
+    This is a second version of the multimodal CESNET architecture. It was used in
+    the "Encrypted traffic classification: the QUIC case" paper.
+
+    Changes from the first version:
+        - Global pooling was added to the CNN part processing PPI sequences, instead of a simple flattening.
+        - One more Conv1d layer was added to the CNN part and the number of channels was increased.
+        - The size of the MLP processing flow statistics was increased.
+        - The size of the MLP processing shared representations was decreased.
+        - Some dropout rates were decreased.
+    """
+    v2_model_configuration = {
         "conv_normalization": NormalizationEnum.BATCH_NORM,
         "linear_normalization": NormalizationEnum.BATCH_NORM,
         "cnn_num_hidden": 3,
         "cnn_channels1": 200,
         "cnn_channels2": 300,
         "cnn_channels3": 300,
-        "cnn_pooling_dropout_rate": 0.1,
+        "cnn_use_pooling": True,
+        "cnn_dropout_rate": 0.1,
         "flowstats_num_hidden": 2,
         "flowstats_size": 225,
         "flowstats_out_size": 225,
         "flowstats_dropout_rate": 0.1,
         "latent_num_hidden":  0,
         "latent_size": 600,
+        "latent_dropout_rate": 0.2,
+    }
+    return _multimodal_cesnet(model_configuration=v2_model_configuration,
+                              weights=weights,
+                              model_dir=model_dir,
+                              num_classes=num_classes,
+                              flowstats_input_size=flowstats_input_size,
+                              ppi_input_channels=ppi_input_channels)
+
+def mm_cesnet_v1(weights: Optional[MM_CESNET_QUIC1_Weights] = None,
+                      model_dir: Optional[str] = None,
+                      num_classes: Optional[int] = None,
+                      flowstats_input_size: Optional[int] = None,
+                      ppi_input_channels: Optional[int] = None,
+                      ) -> Multimodal_CESNET:
+    """
+    This model was used in the "Fine-grained TLS services classification with reject option" paper.
+    """
+    v1_model_configuration = {
+        "conv_normalization": NormalizationEnum.BATCH_NORM,
+        "linear_normalization": NormalizationEnum.BATCH_NORM,
+        "cnn_num_hidden": 2,
+        "cnn_channels1": 72,
+        "cnn_channels2": 128,
+        "cnn_channels3": 128,
+        "cnn_use_pooling": False,
+        "cnn_dropout_rate": 0.2,
+        "flowstats_num_hidden": 2,
+        "flowstats_size": 64,
+        "flowstats_out_size": 32,
+        "flowstats_dropout_rate": 0.2,
+        "latent_num_hidden": 1,
+        "latent_size": 480,
         "latent_dropout_rate": 0.2,
     }
     return _multimodal_cesnet(model_configuration=v1_model_configuration,

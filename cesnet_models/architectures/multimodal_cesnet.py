@@ -60,7 +60,8 @@ class Multimodal_CESNET(nn.Module):
                        ppi_input_channels: int,
                        use_flowstats: bool = True, add_ppi_to_flowstats: bool = False,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM,
-                       cnn_channels1: int = 200, cnn_channels2: int = 300, cnn_channels3: int = 300, cnn_num_hidden: int = 3, cnn_depthwise: bool = False, cnn_pooling_dropout_rate: float = 0.1,
+                       cnn_channels1: int = 200, cnn_channels2: int = 300, cnn_channels3: int = 300, cnn_num_hidden: int = 3, cnn_depthwise: bool = False,
+                       cnn_use_pooling: bool = True, cnn_dropout_rate: float = 0.1,
                        flowstats_size: int = 225, flowstats_out_size: int = 225, flowstats_num_hidden: int = 2, flowstats_dropout_rate: float = 0.1,
                        latent_size: int = 600, latent_num_hidden: int = 0, latent_dropout_rate: float = 0.2,
                        ):
@@ -76,6 +77,7 @@ class Multimodal_CESNET(nn.Module):
         self.use_flowstats = use_flowstats
         self.add_ppi_to_flowstats = add_ppi_to_flowstats
         self.latent_size = latent_size
+        self.cnn_use_pooling = cnn_use_pooling
 
         CNN_PPI_OUTPUT_LEN = 10
         PPI_LEN = 30
@@ -83,7 +85,11 @@ class Multimodal_CESNET(nn.Module):
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
         conv1d_groups = ppi_input_channels if cnn_depthwise else 1
         mlp_flowstats_input_size = flowstats_input_size + (ppi_input_channels * PPI_LEN) if add_ppi_to_flowstats else flowstats_input_size
-        mlp_shared_input_size =  cnn_channels3 + flowstats_out_size if use_flowstats else cnn_channels3
+        mlp_shared_input_size = flowstats_out_size if use_flowstats else 0
+        if cnn_use_pooling:
+            mlp_shared_input_size += cnn_channels3
+        else:
+            mlp_shared_input_size += cnn_channels3 * CNN_PPI_OUTPUT_LEN
 
         self.cnn_ppi = nn.Sequential(
             # [(W−K+2P)/S]+1
@@ -112,12 +118,19 @@ class Multimodal_CESNET(nn.Module):
             # 10 * channels3
             # CNN_PPI_OUTPUT_LEN = 10
         )
-        self.cnn_global_pooling = nn.Sequential(
-            GeM(kernel_size=CNN_PPI_OUTPUT_LEN),
-            nn.Flatten(),
-            *linear_norm(cnn_channels3),
-            nn.Dropout(cnn_pooling_dropout_rate),
-        )
+        if cnn_use_pooling:
+            self.cnn_global_pooling = nn.Sequential(
+                GeM(kernel_size=CNN_PPI_OUTPUT_LEN),
+                nn.Flatten(),
+                *linear_norm(cnn_channels3),
+                nn.Dropout(cnn_dropout_rate),
+            )
+        else:
+            self.cnn_flatten_without_pooling = nn.Sequential(
+                nn.Flatten(),
+                *linear_norm(cnn_channels3 * CNN_PPI_OUTPUT_LEN),
+                nn.Dropout(cnn_dropout_rate),
+            )
         self.mlp_flowstats = nn.Sequential(
             nn.Linear(mlp_flowstats_input_size, flowstats_size),
             nn.ReLU(inplace=False),
@@ -145,11 +158,14 @@ class Multimodal_CESNET(nn.Module):
                 *linear_norm(latent_size),
                 nn.Dropout(latent_dropout_rate)) for _ in range(latent_num_hidden)),
         )
-        self.out = nn.Linear(latent_size, num_classes)
+        self.classifier = nn.Linear(latent_size, num_classes)
 
     def _forward_impl(self, ppi, flowstats):
         out = self.cnn_ppi(ppi)
-        out = self.cnn_global_pooling(out)
+        if self.cnn_use_pooling:
+            out = self.cnn_global_pooling(out)
+        else:
+            out = self.cnn_flatten_without_pooling(out)
         if self.use_flowstats:
             if self.add_ppi_to_flowstats:
                 flowstats_input = torch.column_stack([torch.flatten(ppi, 1), flowstats])
@@ -158,7 +174,7 @@ class Multimodal_CESNET(nn.Module):
             out_flowstats = self.mlp_flowstats(flowstats_input)
             out = torch.column_stack([out, out_flowstats])
         out = self.mlp_shared(out)
-        logits = self.out(out)
+        logits = self.classifier(out)
         return logits
 
     def forward(self, *x: tuple) -> Tensor:

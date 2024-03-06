@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+from torch import nn
 from torch.hub import load_state_dict_from_url
 
 
@@ -28,3 +29,6 @@ class WeightsEnum(Enum):
 
     def get_state_dict(self, model_dir: Optional[str]) -> dict:
         return load_state_dict_from_url(url=self.value.url, model_dir=model_dir, progress=True, check_hash=True)
+
+def count_nn_parameters(model: nn.Module) -> int:
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
