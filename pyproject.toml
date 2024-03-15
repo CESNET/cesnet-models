@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cesnet-models"
-version = "0.0.1"
+version = "0.0.3"
 authors = [
   {name = "Jan Luxemburk", email = "luxemburk@cesnet.cz"},
   {name = "Karel Hynek", email = "hynekkar@cesnet.cz"},
@@ -36,9 +36,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "black",
   "build",
-  "jupyterlab",
   "mkdocs-autorefs",
   "mkdocs-material-extensions",
   "mkdocs-material",
@@ -56,4 +54,5 @@ dev = [
 [tool.setuptools]
 packages = [
   "cesnet_models",
+  "cesnet_models.architectures",
 ]

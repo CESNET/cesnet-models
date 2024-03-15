@@ -1,6 +1,6 @@
-site_name: CESNET DataZoo
-repo_name: CESNET/cesnet-datazoo
-repo_url: https://github.com/CESNET/cesnet-datazoo
+site_name: CESNET Models
+repo_name: CESNET/cesnet-models
+repo_url: https://github.com/CESNET/cesnet-models
 
 theme:
   name: "material"
@@ -8,8 +8,8 @@ theme:
     primary: blue grey
   features:
     - navigation.sections
-  logo: images/datazoo_logo.svg
-  favicon: images/datazoo_logo.svg
+  logo: images/models_logo.svg
+  favicon: images/models_logo.svg
 
 plugins:
   - search
@@ -17,7 +17,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [cesnet_datazoo]
+          paths: [cesnet_models]
 
 markdown_extensions:
   - admonition
@@ -32,13 +32,8 @@ extra:
 nav:
   - Introduction: index.md
   - Installation: installation.md
-  - Oveview of datasets: datasets_overview.md
-  - Data features: features.md
   - Tutorials:
     - Getting started: getting_started.md
-    - Using dataloaders: dataloaders.md
   - Reference:
-    - CesnetDataset: reference_cesnet_dataset.md
-    - DatasetConfig: reference_dataset_config.md
-    - Datasets: reference_datasets.md
-    - DatasetMetadata: dataset_metadata.md
+    - Pre-trained models: reference_models.md
+    - Transforms: reference_transforms.md

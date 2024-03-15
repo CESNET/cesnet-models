@@ -12,16 +12,6 @@ SIZE_POS = 2
 PHIST_BIN_COUNT = 8
 
 
-class ScalerEnum(str, Enum):
-    """Available scalers for flow statistics, packet sizes, and inter-packet times."""
-    STANDARD = "standard"
-    """Standardize features by removing the mean and scaling to unit variance - [`sklearn.preprocessing.StandardScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html)."""
-    ROBUST = "robust"
-    """Robust scaling with the median and the interquartile range - [`sklearn.preprocessing.RobustScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html)."""
-    MINMAX = "minmax"
-    """Scaling to a (0, 1) range - [`sklearn.preprocessing.MinMaxScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html)."""
-    def __str__(self): return self.value
-
 def set_scaler_attrs(scaler: StandardScaler | RobustScaler | MinMaxScaler, scaler_attrs: dict[str, list[float]]):
     if isinstance(scaler, StandardScaler):
         assert "mean_" in scaler_attrs and "scale_" in scaler_attrs
@@ -38,7 +28,43 @@ def set_scaler_attrs(scaler: StandardScaler | RobustScaler | MinMaxScaler, scale
     else:
         assert_never(scaler)
 
+class ScalerEnum(str, Enum):
+    """Available scalers for flow statistics, packet sizes, and inter-packet times."""
+    STANDARD = "standard"
+    """Standardize features by removing the mean and scaling to unit variance - [`StandardScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html)."""
+    ROBUST = "robust"
+    """Robust scaling with the median and the interquartile range - [`RobustScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html)."""
+    MINMAX = "minmax"
+    """Scaling to a (0, 1) range - [`MinMaxScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html)."""
+    def __str__(self): return self.value
+
 class ClipAndScalePPI(nn.Module):
+    """
+    Transform class for scaling of per-packet information (PPI) sequences. This transform clips packet sizes and inter-packet times and scales them using a specified scaler.
+    This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.
+
+    When used with the CESNET DataZoo package, the transform will be fitted during dataset initialization. Otherwise, the `psizes_scaler_attrs` and `ipt_scaler_attrs` must be provided.
+    The required entries in `psizes_scaler_attrs` and `ipt_scaler_attrs` depend on the scaler used.
+
+    - For `StandardScaler`, the required attributes are `mean_` and `scale_`.
+    - For `RobustScaler`, the required attributes are `center_` and `scale_`.
+    - For `MinMaxScaler`,  the required attributes `min_` and `scale_`.
+
+    Expected format of input PPI sequences: `(batch_size, ppi_length, ppi_channels)`
+
+    !!! info Padding
+        The zero padding in PPI sequences is preserved during scaling, i.e., the padding zeroes are kept in the output.
+
+    Parameters:
+        psizes_scaler_enum: What scaler should be used for packet sizes. Options are standard, robust, and minmax.
+        ipt_scaler_enum: What scaler should be used for inter-packet times. Options are standard, robust, and minmax.
+        pszies_min: Clip packet sizes to this minimum value.
+        psizes_max: Clip packet sizes to this maximum value.
+        ipt_min: Clip inter-packet times to this minimum value.
+        ipt_max: Clip inter-packet times to this maximum value.
+        psizes_scaler_attrs: To use a pre-fitted packet sizes scaler, provide its attributes here.
+        ipt_scaler_attrs: To use a pre-fitted inter-packet times scaler, provide its attributes here.
+    """
     psizes_scaler: StandardScaler | RobustScaler | MinMaxScaler
     ipt_scaler: StandardScaler | RobustScaler | MinMaxScaler
     pszies_min: int
@@ -109,6 +135,25 @@ class ClipAndScalePPI(nn.Module):
         return f"{self.__class__.__name__}(psizes_scaler={self._psizes_scaler_enum}, ipt_scaler={self._ipt_scaler_enum}, pszies_min={self.pszies_min}, psizes_max={self.psizes_max}, ipt_min={self.ipt_min}, ipt_max={self.ipt_max})"
 
 class ClipAndScaleFlowstats(nn.Module):
+    """
+    Transform class for scaling of features describing an entire network flow -- called flow statistics. This transform clips flow statistics to their `quantile_clip` quantile and scales them using a specified scaler.
+    This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.
+
+    When used with the CESNET DataZoo package, the transform will be fitted during dataset initialization. Otherwise, the `flowstats_scaler_attrs` must be provided.
+    The required entries in `flowstats_scaler_attrs` depend on the scaler used.
+
+    - For `StandardScaler`, the required attributes are `mean_` and `scale_`.
+    - For `RobustScaler`, the required attributes are `center_` and `scale_`.
+    - For `MinMaxScaler`,  the required attributes `min_` and `scale_`.
+
+    Expected format of input flow statistics: `(batch_size, flowstats_features)`
+
+    Parameters:
+        flowstats_scaler_enum: What scaler should be used for flow statistics. Options are standard, robust, and minmax.
+        quantile_clip: Clip flow statistics to this quantile.
+        flowstats_quantiles:  To use pre-fitted quantiles, provide them here.
+        flowstats_scaler_attrs: To use a pre-fitted scaler, provide its attributes here.
+    """
     flowstats_scaler: StandardScaler | RobustScaler | MinMaxScaler
     quantile_clip: float
     flowstats_quantiles: Optional[list[float]]
@@ -150,7 +195,14 @@ class ClipAndScaleFlowstats(nn.Module):
         return f"{self.__class__.__name__}(flowstats_scaler={self._flowstats_scaler_enum}, quantile_clip={self.quantile_clip})"
 
 class NormalizeHistograms(nn.Module):
+    """
+    Transform class for normalizing packet histograms.
+    This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.
 
+    Expected format of input packet histograms: `(batch_size, 4 * PHIST_BIN_COUNT)`.
+    The input histograms are expected to be in the following order: source packet sizes, destination packet sizes, source inter-packet times, and destination inter-packet times.
+    Each of the four histograms is expected to have `PHIST_BIN_COUNT` bins, which is 8 in the current implementation.
+    """
     def __init__(self) -> None:
         super().__init__()
 

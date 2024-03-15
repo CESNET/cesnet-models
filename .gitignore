@@ -1,10 +1,7 @@
-venv/
 __pycache__/
-site/
-dist/
-build/
-scripts/
-results/
 .vscode/*
 *.egg-info
-notebooks/data/
+dist/
+scripts/
+site/
+venv/

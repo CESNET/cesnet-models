@@ -22,11 +22,11 @@ def _multimodal_cesnet(model_configuration: dict,
             raise ValueError("ppi_input_channels must be provided when weights are not provided")
     if weights is not None:
         if num_classes is not None and num_classes != weights.value.meta["num_classes"]:
-            raise ValueError(f"Based on pretrained weights, num_classes should be {weights.value.meta['num_classes']} but got {num_classes}")
+            raise ValueError(f"Based on pre-trained weights, num_classes should be {weights.value.meta['num_classes']} but got {num_classes}")
         if flowstats_input_size is not None and flowstats_input_size != weights.value.meta["flowstats_input_size"]:
-            raise ValueError(f"Based on pretrained weights, flowstats_input_size should be {weights.value.meta['flowstats_input_size']} but got {flowstats_input_size}")
+            raise ValueError(f"Based on pre-trained weights, flowstats_input_size should be {weights.value.meta['flowstats_input_size']} but got {flowstats_input_size}")
         if ppi_input_channels is not None and ppi_input_channels != weights.value.meta["ppi_input_channels"]:
-            raise ValueError(f"Based on pretrained weights, ppi_input_channels should be {weights.value.meta['ppi_input_channels']} but got {ppi_input_channels}")
+            raise ValueError(f"Based on pre-trained weights, ppi_input_channels should be {weights.value.meta['ppi_input_channels']} but got {ppi_input_channels}")
         num_classes = weights.value.meta["num_classes"]
         flowstats_input_size = weights.value.meta["flowstats_input_size"]
         ppi_input_channels = weights.value.meta["ppi_input_channels"]
@@ -37,53 +37,54 @@ def _multimodal_cesnet(model_configuration: dict,
         model.load_state_dict(weights.get_state_dict(model_dir=model_dir))
     return model
 
-class MM_CESNET_QUIC1_Weights(WeightsEnum):
-    CESNET_QUIC22_Week1 = Weights(
-        url="www.github.com/foo.pth",
-        training_dataset="CESNET_QUIC22",
-        transforms_config={
+class MM_CESNET_V2_Weights(WeightsEnum):
+    CESNET_QUIC22_Week44 = Weights(
+        bucket_url="https://liberouter.org/datazoo/download?bucket=cesnet-models",
+        file_name="mmv2_CESNET_QUIC22_Week44.pth",
+        transforms={
             "ppi_transform": ClipAndScalePPI(
                 psizes_scaler_enum="standard",
-                psizes_scaler_attrs={"mean_": [628.7188066587469], "scale_": [554.9873890137749]},
+                psizes_scaler_attrs={"mean_": [473.3267836449463], "scale_": [529.8389056483248]},
                 pszies_min=1,
-                psizes_max=1500,
+                psizes_max=1460,
                 ipt_scaler_enum="standard",
-                ipt_scaler_attrs={"mean_": [693.3538472283111], "scale_": [5108.986448664004]},
+                ipt_scaler_attrs={"mean_": [105.21803492421186], "scale_": [1061.4572842781342]},
                 ipt_min=0,
-                ipt_max=65000,),
+                ipt_max=15000,),
             "flowstats_transform": ClipAndScaleFlowstats(
                 flowstats_scaler_enum="robust",
                 flowstats_scaler_attrs={
-                    "center_": [2294.0, 5988.0, 13.0, 12.0, 0.9607470035552979, 11.0, 3.0, 0.23399999737739563],
-                    "scale_": [2806.0, 4366.25, 9.0, 11.0, 17.460650961846113, 11.0, 2.0, 3.1197499781847]
-                },
-                flowstats_quantiles=[168878.8099999996, 4059212.0799999908, 1119.0, 3240.0099999999948, np.inf, np.inf, np.inf, np.inf,],
-                quantile_clip=0.99,
-            ),
+                    "center_": [4180.0, 5270.0, 12.0, 13.0, 0.2202340066432953, 25.0, 4.0, 0.15600000321865082],
+                    "scale_": [4424.0, 7367.0, 14.0, 15.0, 4.964351028203964, 13.0, 3.0, 0.5059999749064445]},
+                flowstats_quantiles=[135173.31999999983, 3184071.919999996, 539.0, 2663.0, np.inf, np.inf, np.inf, np.inf],
+                quantile_clip=0.99,),
             "flowstats_phist_transform": NormalizeHistograms(),
         },
         meta={
-            "num_classes": 100,
-            "classes": ["foo", "bar"],
+            "train_dataset": "CESNET_QUIC22",
+            "train_dataset_size": "ORIG",
+            "train_period_name": "W-2022-44",
+            "num_classes": 102,
+            "classes": ["4chan", "adavoid", "alza-identity", "alza-webapi", "alza-www", "apple-privaterelay", "bitdefender-nimbus", "bitly", "blitz-gg", "blogger", "cedexis", "chess-com", "chrome-remotedesktop", "cloudflare-cdnjs", "connectad", "csgo-market", "dcard", "discord", "dm-de", "dns-doh", "doi-org", "drmax", "easybrain", "ebay-kleinanzeigen", "endnote-click", "etoro", "facebook-connect", "facebook-gamesgraph", "facebook-graph", "facebook-media", "facebook-messenger", "facebook-rupload", "facebook-web", "firebase-crashlytics", "fitbit", "flightradar24", "fontawesome", "forum24", "gamedock", "garmin", "gmail", "google-ads", "google-authentication", "google-autofill", "google-calendar", "google-colab", "google-conncheck", "google-docs", "google-drive", "google-fonts", "google-gstatic", "google-hangouts", "google-imasdk", "google-pay", "google-photos", "google-play", "google-recaptcha", "google-safebrowsing", "google-scholar", "google-services", "google-translate", "google-usercontent", "google-www", "goout", "hcaptcha", "hubspot", "instagram", "joinhoney", "jsdelivr", "kaggle", "kiwi-com", "livescore", "mdpi", "medium", "mentimeter", "microsoft-outlook", "microsoft-substrate", "ncbi-gov", "onesignal", "openx", "overleaf-cdn", "overleaf-compile", "playradio", "pocasidata-cz", "revolut", "rohlik", "shazam", "signal-cdn", "sme-sk", "snapchat", "spanbang", "spotify", "tawkto", "tiktok", "tinypass", "toggl", "uber", "unitygames", "usercentrics", "whatsapp", "xhamster", "youtube"],
             "ppi_input_channels": 3,
-            "flowstats_input_size": 30,
+            "flowstats_input_size": 43,
             "use_packet_histograms": True,
-            "num_params": 1_000_000,
+            "num_params": 2_261_653,
             "paper_doi": "https://doi.org/10.23919/TMA58422.2023.10199052",
-            "description":  """These weights reproduce the results of the paper."""
+            "description": """These weights reproduce the results of the "Encrypted traffic classification: the QUIC case" paper."""
         }
     )
-    DEFAULT = CESNET_QUIC22_Week1
+    DEFAULT = CESNET_QUIC22_Week44
 
-def mm_cesnet_v2(weights: Optional[MM_CESNET_QUIC1_Weights] = None,
-                      model_dir: Optional[str] = None,
-                      num_classes: Optional[int] = None,
-                      flowstats_input_size: Optional[int] = None,
-                      ppi_input_channels: Optional[int] = None,
-                      ) -> Multimodal_CESNET:
+def mm_cesnet_v2(weights: Optional[MM_CESNET_V2_Weights] = None,
+                 model_dir: Optional[str] = None,
+                 num_classes: Optional[int] = None,
+                 flowstats_input_size: Optional[int] = None,
+                 ppi_input_channels: Optional[int] = None,
+                 ) -> Multimodal_CESNET:
     """
     This is a second version of the multimodal CESNET architecture. It was used in
-    the "Encrypted traffic classification: the QUIC case" paper.
+    the *"Encrypted traffic classification: the QUIC case"* paper.
 
     Changes from the first version:
         - Global pooling was added to the CNN part processing PPI sequences, instead of a simple flattening.
@@ -91,6 +92,13 @@ def mm_cesnet_v2(weights: Optional[MM_CESNET_QUIC1_Weights] = None,
         - The size of the MLP processing flow statistics was increased.
         - The size of the MLP processing shared representations was decreased.
         - Some dropout rates were decreased.
+
+    Parameters:
+        weights: If provided, the model will be initialized with these weights.
+        model_dir: If weights are provided, this folder will be used to store the weights.
+        num_classes: Number of classes for the classification task.
+        flowstats_input_size: Size of the flow statistics input.
+        ppi_input_channels: Number of channels in the PPI input.
     """
     v2_model_configuration = {
         "conv_normalization": NormalizationEnum.BATCH_NORM,
@@ -116,14 +124,59 @@ def mm_cesnet_v2(weights: Optional[MM_CESNET_QUIC1_Weights] = None,
                               flowstats_input_size=flowstats_input_size,
                               ppi_input_channels=ppi_input_channels)
 
-def mm_cesnet_v1(weights: Optional[MM_CESNET_QUIC1_Weights] = None,
-                      model_dir: Optional[str] = None,
-                      num_classes: Optional[int] = None,
-                      flowstats_input_size: Optional[int] = None,
-                      ppi_input_channels: Optional[int] = None,
-                      ) -> Multimodal_CESNET:
+class MM_CESNET_V1_Weights(WeightsEnum):
+    CESNET_TLS22_WEEK40 = Weights(
+        bucket_url="https://liberouter.org/datazoo/download?bucket=cesnet-models",
+        file_name="mmv1_CESNET_TLS22_WEEK40.pth",
+        transforms={
+            "ppi_transform": ClipAndScalePPI(
+                psizes_scaler_enum="standard",
+                psizes_scaler_attrs={"mean_": [708.5765387201488],"scale_": [581.2818120048021]},
+                pszies_min=1,
+                psizes_max=1460,
+                ipt_scaler_enum="standard",
+                ipt_scaler_attrs={"mean_": [228.1051793224929],"scale_": [1517.0445763930045]},
+                ipt_min=1,
+                ipt_max=15000,),
+            "flowstats_transform": ClipAndScaleFlowstats(
+                flowstats_scaler_enum="robust",
+                flowstats_scaler_attrs={
+                    "center_": [2494.0, 6362.0, 13.0, 13.0, 0.5721004903316498, 13.0, 3.0, 0.20399999618530273],
+                    "scale_": [3028.0, 5321.0, 9.0, 10.0, 5.809830829501152, 11.0, 2.0, 0.7719999849796295]},
+                flowstats_quantiles=[19151.0, 125462.04999999888, 79.0, 126.0, np.inf, np.inf, np.inf, np.inf],
+                quantile_clip=0.95,)
+        },
+        meta={
+            "train_dataset": "CESNET_TLS22",
+            "train_dataset_size": "ORIG",
+            "train_period_name": "W-2021-40",
+            "num_classes": 191,
+            "classes": ["3dsecure", "accuweather", "adobe-ads", "adobe-analytics", "adobe-authentication", "adobe-cloud", "adobe-notifications", "adobe-search", "adobe-updater", "airbank-ib", "alza-bnr", "alza-cdn", "alza-logapi", "alza-signalr", "alza-webapi", "amazon-advertising", "amazon-alexa", "amazon-prime", "apple-icloud", "apple-itunes", "apple-location", "apple-ocsp", "apple-pancake", "apple-push", "apple-updates", "apple-weather", "appnexus", "aukro-backend", "autodesk", "avast", "bing", "bitdefender-gravityzone", "bitdefender-nimbus", "booking-com", "cesnet-filesender", "cesnet-gerrit", "cesnet-kalendar", "cesnet-login", "cesnet-nerd", "cesnet-perun", "chmi", "chrome-remotedesktop", "csas-webchat", "ctu-felmail", "ctu-idp2", "ctu-kos", "ctu-kosapi", "ctu-matrix", "datova-schranka", "discord", "dns-doh", "docker-auth", "docker-registry", "dopravniinfo-api", "dropbox", "duckduckgo", "ea-games", "edge-ntp", "eidentita", "ekasa", "eset-edf", "eset-edtd", "eset-epns", "eset-esa", "eset-ts", "facebook-graph", "facebook-media", "facebook-messenger", "facebook-web", "fio-ib", "firefox-accounts", "firefox-settings", "font-awesome", "gfe-events", "gfe-services", "github", "gitlab", "gmail", "google-ads", "google-authentication", "google-connectivity", "google-drive", "google-fonts", "google-hangouts", "google-play", "google-safebrowsing", "google-services", "google-translate", "google-userlocation", "google-www", "grammarly", "hicloud-connectivity", "hicloud-logservice", "instagram", "justice-isir", "kaspersky", "katastr-nahlizeni", "kb-ib", "king-games", "loggly", "malwarebytes-telemetry", "mapscz", "mcafee-ccs", "mcafee-gti", "mcafee-realprotect", "microsoft-authentication", "microsoft-defender", "microsoft-diagnostic", "microsoft-notes", "microsoft-onedrive", "microsoft-push", "microsoft-settings", "microsoft-update", "microsoft-weather", "mlp-search", "moneta-ib", "moodle", "mozilla-location", "mozilla-push", "mozilla-telemetry", "mozilla-token", "ndk", "netflix", "npm-registry", "o2tv", "obalkyknih", "office-365", "opera-autoupdate", "opera-notifications", "opera-oauth2", "opera-sitecheck", "opera-speeddial", "opera-weather", "outlook", "owncloud", "pubmatic", "r2d2", "rb-ib", "redmine", "riot-games", "rozhlas-api", "rubiconproject", "salesforce", "seznam-authentication", "seznam-email", "seznam-media", "seznam-notifications", "seznam-search", "seznam-ssp", "signageos", "skype", "slack", "snapchat", "soundcloud", "spotify", "steam", "sukl-api", "sukl-auth", "sukl-erecept", "sumava-camdata", "super-media", "teams", "teamviewer-client", "the-weather-channel", "thunderbird-telemetry", "tiktok", "tinder", "twitch", "twitter", "ulozto", "unity-games", "unpkg", "uschovna", "uzis-api", "uzis-ocko", "uzis-plf", "vimeo", "visualstudio-insights", "vmware-vcsa", "vsb-sso", "vscode-update", "vse-insis", "vzp-api", "webex", "whatsapp", "xbox-live", "xiaomi-tracking", "yahoo-mail", "youtube", "zoom", "zotero"],
+            "ppi_input_channels": 3,
+            "flowstats_input_size": 17,
+            "use_tcp_features": True,
+            "num_params": 1_217_903,
+            "paper_doi": "https://doi.org/10.1016/j.comnet.2022.109467",
+            "description":  """These weights reproduce the results of the "Fine-grained TLS services classification with reject option" paper."""
+        }
+    )
+    DEFAULT = CESNET_TLS22_WEEK40
+
+def mm_cesnet_v1(weights: Optional[MM_CESNET_V1_Weights] = None,
+                 model_dir: Optional[str] = None,
+                 num_classes: Optional[int] = None,
+                 flowstats_input_size: Optional[int] = None,
+                 ppi_input_channels: Optional[int] = None,
+                 ) -> Multimodal_CESNET:
     """
-    This model was used in the "Fine-grained TLS services classification with reject option" paper.
+    This model was used in the *"Fine-grained TLS services classification with reject option"* paper.
+
+    Parameters:
+        weights: If provided, the model will be initialized with these weights.
+        model_dir: If weights are provided, this folder will be used to store the weights.
+        num_classes: Number of classes for the classification task.
+        flowstats_input_size: Size of the flow statistics input.
+        ppi_input_channels: Number of channels in the PPI input.
     """
     v1_model_configuration = {
         "conv_normalization": NormalizationEnum.BATCH_NORM,
