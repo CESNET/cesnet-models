@@ -12,6 +12,18 @@ SIZE_POS = 2
 PHIST_BIN_COUNT = 8
 
 
+def get_scaler_attrs(scaler: StandardScaler | RobustScaler | MinMaxScaler) -> dict[str, list[float]]:
+    if isinstance(scaler, StandardScaler):
+        assert hasattr(scaler, "mean_") and scaler.mean_ is not None and hasattr(scaler, "scale_") and scaler.scale_ is not None
+        scaler_attrs = {"mean_": scaler.mean_.tolist(), "scale_": scaler.scale_.tolist()}
+    elif isinstance(scaler, RobustScaler):
+        assert hasattr(scaler, "center_") and hasattr(scaler, "scale_")
+        scaler_attrs = {"center_": scaler.center_.tolist(), "scale_": scaler.scale_.tolist()}
+    elif isinstance(scaler, MinMaxScaler):
+        assert hasattr(scaler, "min_") and hasattr(scaler, "scale_")
+        scaler_attrs = {"min_": scaler.min_.tolist(), "scale_": scaler.scale_.tolist()}
+    return scaler_attrs
+
 def set_scaler_attrs(scaler: StandardScaler | RobustScaler | MinMaxScaler, scaler_attrs: dict[str, list[float]]):
     if isinstance(scaler, StandardScaler):
         assert "mean_" in scaler_attrs and "scale_" in scaler_attrs
@@ -130,6 +142,19 @@ class ClipAndScalePPI(nn.Module):
         x_ppi[padding_mask, SIZE_POS] = 0
         x_ppi = x_ppi.reshape(orig_shape).transpose(0, 2, 1)
         return x_ppi
+    
+    def to_dict(self) -> dict:
+        d = {
+            "psizes_scaler_enum": str(self._psizes_scaler_enum),
+            "psizes_scaler_attrs": get_scaler_attrs(self.psizes_scaler),
+            "pszies_min": self.pszies_min,
+            "psizes_max": self.psizes_max,
+            "ipt_scaler_enum": str(self._ipt_scaler_enum),
+            "ipt_scaler_attrs": get_scaler_attrs(self.ipt_scaler),
+            "ipt_min": self.ipt_min,
+            "ipt_max": self.ipt_max,
+        }
+        return d
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(psizes_scaler={self._psizes_scaler_enum}, ipt_scaler={self._ipt_scaler_enum}, pszies_min={self.pszies_min}, psizes_max={self.psizes_max}, ipt_min={self.ipt_min}, ipt_max={self.ipt_max})"
@@ -190,6 +215,15 @@ class ClipAndScaleFlowstats(nn.Module):
         x_flowstats = x_flowstats.clip(min=0, max=self.flowstats_quantiles)
         x_flowstats = self.flowstats_scaler.transform(x_flowstats) # type: ignore
         return x_flowstats
+    
+    def to_dict(self) -> dict:
+        d = {
+            "flowstats_scaler_enum": str(self._flowstats_scaler_enum),
+            "flowstats_scaler_attrs": get_scaler_attrs(self.flowstats_scaler),
+            "flowstats_quantiles": self.flowstats_quantiles,
+            "quantile_clip": self.quantile_clip,
+        }
+        return d
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(flowstats_scaler={self._flowstats_scaler_enum}, quantile_clip={self.quantile_clip})"
