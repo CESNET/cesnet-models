@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 
+from cesnet_models._models_meta import _CESNET_QUIC22_102_CLASSES, _CESNET_TLS22_191_CLASSES
 from cesnet_models.architectures.multimodal_cesnet import Multimodal_CESNET, NormalizationEnum
 from cesnet_models.helpers import Weights, WeightsEnum
 from cesnet_models.transforms import ClipAndScaleFlowstats, ClipAndScalePPI, NormalizeHistograms
@@ -44,31 +45,40 @@ class MM_CESNET_V2_Weights(WeightsEnum):
         transforms={
             "ppi_transform": ClipAndScalePPI(
                 psizes_scaler_enum="standard",
-                psizes_scaler_attrs={"mean_": [473.3267836449463], "scale_": [529.8389056483248]},
+                psizes_scaler_attrs={"mean_": [473.2243172415956], "scale_": [529.8190065488045]},
                 pszies_min=1,
                 psizes_max=1460,
                 ipt_scaler_enum="standard",
-                ipt_scaler_attrs={"mean_": [105.21803492421186], "scale_": [1061.4572842781342]},
+                ipt_scaler_attrs={"mean_": [105.15864160400703], "scale_": [1061.1513005552956]},
                 ipt_min=0,
                 ipt_max=15000,),
             "flowstats_transform": ClipAndScaleFlowstats(
                 flowstats_scaler_enum="robust",
                 flowstats_scaler_attrs={
-                    "center_": [4180.0, 5270.0, 12.0, 13.0, 0.2202340066432953, 25.0, 4.0, 0.15600000321865082],
-                    "scale_": [4424.0, 7367.0, 14.0, 15.0, 4.964351028203964, 13.0, 3.0, 0.5059999749064445]},
-                flowstats_quantiles=[135173.31999999983, 3184071.919999996, 539.0, 2663.0, np.inf, np.inf, np.inf, np.inf],
+                    "center_": [4176.5, 5267.0, 12.0, 13.0, 0.2200635001063347, 25.0, 4.0, 0.15600000321865082],
+                    "scale_": [4422.0, 7358.0, 14.0, 15.0, 4.944558419287205, 13.0, 3.0, 0.5030000135302544]},
+                flowstats_quantiles=[134147.9500000002, 3182444.600000009, 535.0, 2667.0, np.inf, np.inf, np.inf, np.inf],
                 quantile_clip=0.99,),
             "flowstats_phist_transform": NormalizeHistograms(),
         },
         meta={
-            "train_dataset": "CESNET_QUIC22",
+            "train_dataset": "CESNET-QUIC22",
             "train_dataset_size": "ORIG",
             "train_period_name": "W-2022-44",
             "num_classes": 102,
-            "classes": ["4chan", "adavoid", "alza-identity", "alza-webapi", "alza-www", "apple-privaterelay", "bitdefender-nimbus", "bitly", "blitz-gg", "blogger", "cedexis", "chess-com", "chrome-remotedesktop", "cloudflare-cdnjs", "connectad", "csgo-market", "dcard", "discord", "dm-de", "dns-doh", "doi-org", "drmax", "easybrain", "ebay-kleinanzeigen", "endnote-click", "etoro", "facebook-connect", "facebook-gamesgraph", "facebook-graph", "facebook-media", "facebook-messenger", "facebook-rupload", "facebook-web", "firebase-crashlytics", "fitbit", "flightradar24", "fontawesome", "forum24", "gamedock", "garmin", "gmail", "google-ads", "google-authentication", "google-autofill", "google-calendar", "google-colab", "google-conncheck", "google-docs", "google-drive", "google-fonts", "google-gstatic", "google-hangouts", "google-imasdk", "google-pay", "google-photos", "google-play", "google-recaptcha", "google-safebrowsing", "google-scholar", "google-services", "google-translate", "google-usercontent", "google-www", "goout", "hcaptcha", "hubspot", "instagram", "joinhoney", "jsdelivr", "kaggle", "kiwi-com", "livescore", "mdpi", "medium", "mentimeter", "microsoft-outlook", "microsoft-substrate", "ncbi-gov", "onesignal", "openx", "overleaf-cdn", "overleaf-compile", "playradio", "pocasidata-cz", "revolut", "rohlik", "shazam", "signal-cdn", "sme-sk", "snapchat", "spanbang", "spotify", "tawkto", "tiktok", "tinypass", "toggl", "uber", "unitygames", "usercentrics", "whatsapp", "xhamster", "youtube"],
+            "classes": _CESNET_QUIC22_102_CLASSES,
+            "use_tcp_features": False,
+            "use_packet_histograms": True,
             "ppi_input_channels": 3,
             "flowstats_input_size": 43,
-            "use_packet_histograms": True,
+            "flowstats_features": [
+                "BYTES", "BYTES_REV", "PACKETS", "PACKETS_REV", "DURATION",
+                "PPI_LEN", "PPI_ROUNDTRIPS", "PPI_DURATION",
+                "FLOW_ENDREASON_IDLE", "FLOW_ENDREASON_ACTIVE", "FLOW_ENDREASON_OTHER",
+                "PSIZE_BIN1", "PSIZE_BIN2", "PSIZE_BIN3", "PSIZE_BIN4", "PSIZE_BIN5", "PSIZE_BIN6","PSIZE_BIN7", "PSIZE_BIN8",
+                "PSIZE_BIN1_REV", "PSIZE_BIN2_REV", "PSIZE_BIN3_REV", "PSIZE_BIN4_REV", "PSIZE_BIN5_REV", "PSIZE_BIN6_REV", "PSIZE_BIN7_REV", "PSIZE_BIN8_REV",
+                "IPT_BIN1", "IPT_BIN2", "IPT_BIN3", "IPT_BIN4", "IPT_BIN5", "IPT_BIN6", "IPT_BIN7", "IPT_BIN8",
+                "IPT_BIN1_REV", "IPT_BIN2_REV", "IPT_BIN3_REV", "IPT_BIN4_REV", "IPT_BIN5_REV", "IPT_BIN6_REV", "IPT_BIN7_REV", "IPT_BIN8_REV"],
             "num_params": 2_261_653,
             "paper_doi": "https://doi.org/10.23919/TMA58422.2023.10199052",
             "description": """These weights reproduce the results of the "Encrypted traffic classification: the QUIC case" paper."""
@@ -127,34 +137,40 @@ def mm_cesnet_v2(weights: Optional[MM_CESNET_V2_Weights] = None,
 class MM_CESNET_V1_Weights(WeightsEnum):
     CESNET_TLS22_WEEK40 = Weights(
         bucket_url="https://liberouter.org/datazoo/download?bucket=cesnet-models",
-        file_name="mmv1_CESNET_TLS22_WEEK40.pth",
+        file_name="mmv1_CESNET_TLS22_Week40.pth",
         transforms={
             "ppi_transform": ClipAndScalePPI(
                 psizes_scaler_enum="standard",
-                psizes_scaler_attrs={"mean_": [708.5765387201488],"scale_": [581.2818120048021]},
+                psizes_scaler_attrs={"mean_": [708.3937210483823],"scale_": [581.2441777831351]},
                 pszies_min=1,
                 psizes_max=1460,
                 ipt_scaler_enum="standard",
-                ipt_scaler_attrs={"mean_": [228.1051793224929],"scale_": [1517.0445763930045]},
+                ipt_scaler_attrs={"mean_": [228.10927542399668],"scale_": [1517.1576685053515]},
                 ipt_min=1,
                 ipt_max=15000,),
             "flowstats_transform": ClipAndScaleFlowstats(
                 flowstats_scaler_enum="robust",
                 flowstats_scaler_attrs={
-                    "center_": [2494.0, 6362.0, 13.0, 13.0, 0.5721004903316498, 13.0, 3.0, 0.20399999618530273],
-                    "scale_": [3028.0, 5321.0, 9.0, 10.0, 5.809830829501152, 11.0, 2.0, 0.7719999849796295]},
-                flowstats_quantiles=[19151.0, 125462.04999999888, 79.0, 126.0, np.inf, np.inf, np.inf, np.inf],
-                quantile_clip=0.95,)
+                    "center_": [2493.0, 6358.0, 13.0, 13.0, 0.5710994899272919, 13.0, 3.0, 0.20399999618530273],
+                    "scale_": [3025.0, 5321.0, 9.0, 10.0, 5.814603120088577, 11.0, 2.0, 0.7700000107288361]},
+                flowstats_quantiles=[19147.0, 125204.75, 78.0, 126.0, np.inf, np.inf, np.inf, np.inf],
+                quantile_clip=0.95,),
+            "flowstats_phist_transform": None,
         },
         meta={
-            "train_dataset": "CESNET_TLS22",
+            "train_dataset": "CESNET-TLS22",
             "train_dataset_size": "ORIG",
             "train_period_name": "W-2021-40",
             "num_classes": 191,
-            "classes": ["3dsecure", "accuweather", "adobe-ads", "adobe-analytics", "adobe-authentication", "adobe-cloud", "adobe-notifications", "adobe-search", "adobe-updater", "airbank-ib", "alza-bnr", "alza-cdn", "alza-logapi", "alza-signalr", "alza-webapi", "amazon-advertising", "amazon-alexa", "amazon-prime", "apple-icloud", "apple-itunes", "apple-location", "apple-ocsp", "apple-pancake", "apple-push", "apple-updates", "apple-weather", "appnexus", "aukro-backend", "autodesk", "avast", "bing", "bitdefender-gravityzone", "bitdefender-nimbus", "booking-com", "cesnet-filesender", "cesnet-gerrit", "cesnet-kalendar", "cesnet-login", "cesnet-nerd", "cesnet-perun", "chmi", "chrome-remotedesktop", "csas-webchat", "ctu-felmail", "ctu-idp2", "ctu-kos", "ctu-kosapi", "ctu-matrix", "datova-schranka", "discord", "dns-doh", "docker-auth", "docker-registry", "dopravniinfo-api", "dropbox", "duckduckgo", "ea-games", "edge-ntp", "eidentita", "ekasa", "eset-edf", "eset-edtd", "eset-epns", "eset-esa", "eset-ts", "facebook-graph", "facebook-media", "facebook-messenger", "facebook-web", "fio-ib", "firefox-accounts", "firefox-settings", "font-awesome", "gfe-events", "gfe-services", "github", "gitlab", "gmail", "google-ads", "google-authentication", "google-connectivity", "google-drive", "google-fonts", "google-hangouts", "google-play", "google-safebrowsing", "google-services", "google-translate", "google-userlocation", "google-www", "grammarly", "hicloud-connectivity", "hicloud-logservice", "instagram", "justice-isir", "kaspersky", "katastr-nahlizeni", "kb-ib", "king-games", "loggly", "malwarebytes-telemetry", "mapscz", "mcafee-ccs", "mcafee-gti", "mcafee-realprotect", "microsoft-authentication", "microsoft-defender", "microsoft-diagnostic", "microsoft-notes", "microsoft-onedrive", "microsoft-push", "microsoft-settings", "microsoft-update", "microsoft-weather", "mlp-search", "moneta-ib", "moodle", "mozilla-location", "mozilla-push", "mozilla-telemetry", "mozilla-token", "ndk", "netflix", "npm-registry", "o2tv", "obalkyknih", "office-365", "opera-autoupdate", "opera-notifications", "opera-oauth2", "opera-sitecheck", "opera-speeddial", "opera-weather", "outlook", "owncloud", "pubmatic", "r2d2", "rb-ib", "redmine", "riot-games", "rozhlas-api", "rubiconproject", "salesforce", "seznam-authentication", "seznam-email", "seznam-media", "seznam-notifications", "seznam-search", "seznam-ssp", "signageos", "skype", "slack", "snapchat", "soundcloud", "spotify", "steam", "sukl-api", "sukl-auth", "sukl-erecept", "sumava-camdata", "super-media", "teams", "teamviewer-client", "the-weather-channel", "thunderbird-telemetry", "tiktok", "tinder", "twitch", "twitter", "ulozto", "unity-games", "unpkg", "uschovna", "uzis-api", "uzis-ocko", "uzis-plf", "vimeo", "visualstudio-insights", "vmware-vcsa", "vsb-sso", "vscode-update", "vse-insis", "vzp-api", "webex", "whatsapp", "xbox-live", "xiaomi-tracking", "yahoo-mail", "youtube", "zoom", "zotero"],
+            "classes": _CESNET_TLS22_191_CLASSES,
+            "use_tcp_features": True,
+            "use_packet_histograms": False,
             "ppi_input_channels": 3,
             "flowstats_input_size": 17,
-            "use_tcp_features": True,
+            "flowstats_features": [
+                "BYTES", "BYTES_REV", "PACKETS", "PACKETS_REV", "DURATION",
+                "PPI_LEN", "PPI_ROUNDTRIPS", "PPI_DURATION",
+                "FLAG_CWR", "FLAG_CWR_REV", "FLAG_ECE", "FLAG_ECE_REV", "FLAG_PSH_REV", "FLAG_RST", "FLAG_RST_REV", "FLAG_FIN", "FLAG_FIN_REV"],
             "num_params": 1_217_903,
             "paper_doi": "https://doi.org/10.1016/j.comnet.2022.109467",
             "description":  """These weights reproduce the results of the "Fine-grained TLS services classification with reject option" paper."""
