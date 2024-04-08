@@ -748,19 +748,7 @@ The required entries in <code>psizes_scaler_attrs</code> and <code>ipt_scaler_at
 
             <details class="quote">
               <summary>Source code in <code>cesnet_models\transforms.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 41</span>
-<span class="normal"> 42</span>
-<span class="normal"> 43</span>
-<span class="normal"> 44</span>
-<span class="normal"> 45</span>
-<span class="normal"> 46</span>
-<span class="normal"> 47</span>
-<span class="normal"> 48</span>
-<span class="normal"> 49</span>
-<span class="normal"> 50</span>
-<span class="normal"> 51</span>
-<span class="normal"> 52</span>
-<span class="normal"> 53</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 53</span>
 <span class="normal"> 54</span>
 <span class="normal"> 55</span>
 <span class="normal"> 56</span>
@@ -842,7 +830,32 @@ The required entries in <code>psizes_scaler_attrs</code> and <code>ipt_scaler_at
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
-<span class="normal">135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ClipAndScalePPI</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ClipAndScalePPI</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Transform class for scaling of per-packet information (PPI) sequences. This transform clips packet sizes and inter-packet times and scales them using a specified scaler.</span>
 <span class="sd">    This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.</span>
@@ -934,6 +947,19 @@ The required entries in <code>psizes_scaler_attrs</code> and <code>ipt_scaler_at
         <span class="n">x_ppi</span><span class="p">[</span><span class="n">padding_mask</span><span class="p">,</span> <span class="n">SIZE_POS</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">x_ppi</span> <span class="o">=</span> <span class="n">x_ppi</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">orig_shape</span><span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">x_ppi</span>
+
+    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;psizes_scaler_enum&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_psizes_scaler_enum</span><span class="p">),</span>
+            <span class="s2">&quot;psizes_scaler_attrs&quot;</span><span class="p">:</span> <span class="n">get_scaler_attrs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">psizes_scaler</span><span class="p">),</span>
+            <span class="s2">&quot;pszies_min&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pszies_min</span><span class="p">,</span>
+            <span class="s2">&quot;psizes_max&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">psizes_max</span><span class="p">,</span>
+            <span class="s2">&quot;ipt_scaler_enum&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ipt_scaler_enum</span><span class="p">),</span>
+            <span class="s2">&quot;ipt_scaler_attrs&quot;</span><span class="p">:</span> <span class="n">get_scaler_attrs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ipt_scaler</span><span class="p">),</span>
+            <span class="s2">&quot;ipt_min&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipt_min</span><span class="p">,</span>
+            <span class="s2">&quot;ipt_max&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipt_max</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">d</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(psizes_scaler=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_psizes_scaler_enum</span><span class="si">}</span><span class="s2">, ipt_scaler=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ipt_scaler_enum</span><span class="si">}</span><span class="s2">, pszies_min=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pszies_min</span><span class="si">}</span><span class="s2">, psizes_max=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">psizes_max</span><span class="si">}</span><span class="s2">, ipt_min=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ipt_min</span><span class="si">}</span><span class="s2">, ipt_max=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ipt_max</span><span class="si">}</span><span class="s2">)&quot;</span>
@@ -1062,32 +1088,7 @@ The required entries in <code>flowstats_scaler_attrs</code> depend on the scaler
 
             <details class="quote">
               <summary>Source code in <code>cesnet_models\transforms.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">162</span>
 <span class="normal">163</span>
 <span class="normal">164</span>
 <span class="normal">165</span>
@@ -1120,7 +1121,41 @@ The required entries in <code>flowstats_scaler_attrs</code> depend on the scaler
 <span class="normal">192</span>
 <span class="normal">193</span>
 <span class="normal">194</span>
-<span class="normal">195</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ClipAndScaleFlowstats</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ClipAndScaleFlowstats</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Transform class for scaling of features describing an entire network flow -- called flow statistics. This transform clips flow statistics to their `quantile_clip` quantile and scales them using a specified scaler.</span>
 <span class="sd">    This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.</span>
@@ -1177,6 +1212,15 @@ The required entries in <code>flowstats_scaler_attrs</code> depend on the scaler
         <span class="n">x_flowstats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flowstats_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">x_flowstats</span><span class="p">)</span> <span class="c1"># type: ignore</span>
         <span class="k">return</span> <span class="n">x_flowstats</span>
 
+    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;flowstats_scaler_enum&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_flowstats_scaler_enum</span><span class="p">),</span>
+            <span class="s2">&quot;flowstats_scaler_attrs&quot;</span><span class="p">:</span> <span class="n">get_scaler_attrs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flowstats_scaler</span><span class="p">),</span>
+            <span class="s2">&quot;flowstats_quantiles&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">flowstats_quantiles</span><span class="p">,</span>
+            <span class="s2">&quot;quantile_clip&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile_clip</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">d</span>
+
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(flowstats_scaler=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_flowstats_scaler_enum</span><span class="si">}</span><span class="s2">, quantile_clip=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile_clip</span><span class="si">}</span><span class="s2">)&quot;</span>
 </code></pre></div></td></tr></table></div>
@@ -1227,29 +1271,29 @@ Each of the four histograms is expected to have <code>PHIST_BIN_COUNT</code> bin
 
             <details class="quote">
               <summary>Source code in <code>cesnet_models\transforms.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">NormalizeHistograms</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">NormalizeHistograms</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Transform class for normalizing packet histograms.</span>
 <span class="sd">    This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.</span>
