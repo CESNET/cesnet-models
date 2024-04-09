@@ -36,6 +36,7 @@ def _multimodal_cesnet(model_configuration: dict,
     model = Multimodal_CESNET(**model_configuration, num_classes=num_classes, flowstats_input_size=flowstats_input_size, ppi_input_channels=ppi_input_channels)
     if weights is not None:
         model.load_state_dict(weights.get_state_dict(model_dir=model_dir))
+        model.eval()
     return model
 
 class MM_CESNET_V2_Weights(WeightsEnum):
