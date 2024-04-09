@@ -379,7 +379,7 @@
         
   
   <span class="md-ellipsis">
-    Pre-trained models
+    Models
   </span>
   
 
@@ -583,7 +583,6 @@
 
 
 <h1 id="data-transformations">Data transformations</h1>
-<p>Available data transformations.</p>
 
 
 <div class="doc doc-object doc-class">
@@ -605,7 +604,7 @@
   
       <p>Transform class for scaling of per-packet information (PPI) sequences. This transform clips packet sizes and inter-packet times and scales them using a specified scaler.
 This class inherits from <code>nn.Module</code>, and the data transformation is implemented in the <code>forward</code> method.</p>
-<p>When used with the CESNET DataZoo package, the transform will be fitted during dataset initialization. Otherwise, the <code>psizes_scaler_attrs</code> and <code>ipt_scaler_attrs</code> must be provided.
+<p>When used with the <code>cesnet-datazoo</code> package, the transform will be fitted during dataset initialization. Otherwise, the <code>psizes_scaler_attrs</code> and <code>ipt_scaler_attrs</code> must be provided.
 The required entries in <code>psizes_scaler_attrs</code> and <code>ipt_scaler_attrs</code> depend on the scaler used.</p>
 <ul>
 <li>For <code>StandardScaler</code>, the required attributes are <code>mean_</code> and <code>scale_</code>.</li>
@@ -860,7 +859,7 @@ The required entries in <code>psizes_scaler_attrs</code> and <code>ipt_scaler_at
 <span class="sd">    Transform class for scaling of per-packet information (PPI) sequences. This transform clips packet sizes and inter-packet times and scales them using a specified scaler.</span>
 <span class="sd">    This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.</span>
 
-<span class="sd">    When used with the CESNET DataZoo package, the transform will be fitted during dataset initialization. Otherwise, the `psizes_scaler_attrs` and `ipt_scaler_attrs` must be provided.</span>
+<span class="sd">    When used with the `cesnet-datazoo` package, the transform will be fitted during dataset initialization. Otherwise, the `psizes_scaler_attrs` and `ipt_scaler_attrs` must be provided.</span>
 <span class="sd">    The required entries in `psizes_scaler_attrs` and `ipt_scaler_attrs` depend on the scaler used.</span>
 
 <span class="sd">    - For `StandardScaler`, the required attributes are `mean_` and `scale_`.</span>
@@ -1005,7 +1004,7 @@ The required entries in <code>psizes_scaler_attrs</code> and <code>ipt_scaler_at
   
       <p>Transform class for scaling of features describing an entire network flow -- called flow statistics. This transform clips flow statistics to their <code>quantile_clip</code> quantile and scales them using a specified scaler.
 This class inherits from <code>nn.Module</code>, and the data transformation is implemented in the <code>forward</code> method.</p>
-<p>When used with the CESNET DataZoo package, the transform will be fitted during dataset initialization. Otherwise, the <code>flowstats_scaler_attrs</code> must be provided.
+<p>When used with the <code>cesnet-datazoo</code> package, the transform will be fitted during dataset initialization. Otherwise, the <code>flowstats_scaler_attrs</code> must be provided.
 The required entries in <code>flowstats_scaler_attrs</code> depend on the scaler used.</p>
 <ul>
 <li>For <code>StandardScaler</code>, the required attributes are <code>mean_</code> and <code>scale_</code>.</li>
@@ -1160,7 +1159,7 @@ The required entries in <code>flowstats_scaler_attrs</code> depend on the scaler
 <span class="sd">    Transform class for scaling of features describing an entire network flow -- called flow statistics. This transform clips flow statistics to their `quantile_clip` quantile and scales them using a specified scaler.</span>
 <span class="sd">    This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.</span>
 
-<span class="sd">    When used with the CESNET DataZoo package, the transform will be fitted during dataset initialization. Otherwise, the `flowstats_scaler_attrs` must be provided.</span>
+<span class="sd">    When used with the `cesnet-datazoo` package, the transform will be fitted during dataset initialization. Otherwise, the `flowstats_scaler_attrs` must be provided.</span>
 <span class="sd">    The required entries in `flowstats_scaler_attrs` depend on the scaler used.</span>
 
 <span class="sd">    - For `StandardScaler`, the required attributes are `mean_` and `scale_`.</span>

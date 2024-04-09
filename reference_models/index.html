@@ -20,7 +20,7 @@
     
     
       
-        <title>Pre-trained models - CESNET Models</title>
+        <title>Models - CESNET Models</title>
       
     
     
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pre-trained models
+              Models
             
           </span>
         </div>
@@ -390,7 +390,7 @@
           
   
   <span class="md-ellipsis">
-    Pre-trained models
+    Models
   </span>
   
 
@@ -401,7 +401,7 @@
         
   
   <span class="md-ellipsis">
-    Pre-trained models
+    Models
   </span>
   
 
@@ -421,6 +421,13 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#input" class="md-nav__link">
+    Input
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#models.mm_cesnet_v2" class="md-nav__link">
@@ -499,6 +506,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#input" class="md-nav__link">
+    Input
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#models.mm_cesnet_v2" class="md-nav__link">
     mm_cesnet_v2()
   </a>
@@ -531,6 +545,20 @@
 
 
 <h1 id="available-models">Available models</h1>
+<p>Functions for creating the models (<a class="autorefs autorefs-internal" href="#models.mm_cesnet_v1"><code>mm_cesnet_v1</code></a> and <a class="autorefs autorefs-internal" href="#models.mm_cesnet_v2"><code>mm_cesnet_v2</code></a>) share the following behavior. When the <code>weights</code> parameter is specified, the pre-trained weights will be downloaded and cached in the <code>model_dir</code> folder. The returned model will be in the <a href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.eval">evaluation mode</a>.</p>
+<p>On the other hand, when the <code>weights</code> parameter is not specified, the model will be initialized with random weights (default PyTorch behavior), and the following arguments become mandatory:</p>
+<ul>
+<li><code>num_classes</code> - the number of classes, which defines the output size of the last linear layer.</li>
+<li><code>flowstats_input_size</code> - the number of flow statistics features and, therefore, the input size of the first linear layer processing them.</li>
+<li><code>ppi_input_channels</code> - the number of channels in PPI sequences. The standard value is three for packet sizes, directions, and inter-arrival times.</li>
+</ul>
+<h3 id="input">Input</h3>
+<p>The models expect input in the format of <code>tuple(batch_ppi, batch_flowstats)</code>. The shapes are:</p>
+<ul>
+<li>batch_ppi <code>torch.tensor (B, ppi_input_channels, 30)</code> - batch size of <code>B</code> and  the length of PPI sequences is required to be 30.</li>
+<li>batch_flowstats <code>torch.tensor (B, flowstats_input_size)</code></li>
+</ul>
+<p>All Jupyter notebooks listed on the <a class="autorefs autorefs-internal" href="../getting_started/#getting-started">getting started</a> page show how to feed data into the models.</p>
 
 
 
@@ -562,7 +590,7 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
   <summary>Changes from the first version</summary>
   <ul>
 <li>Global pooling was added to the CNN part processing PPI sequences, instead of a simple flattening.</li>
-<li>One more Conv1d layer was added to the CNN part and the number of channels was increased.</li>
+<li>One more Conv1D layer was added to the CNN part and the number of channels was increased.</li>
 <li>The size of the MLP processing flow statistics was increased.</li>
 <li>The size of the MLP processing shared representations was decreased.</li>
 <li>Some dropout rates were decreased.</li>
@@ -616,7 +644,7 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
           </td>
           <td>
             <div class="doc-md-description">
-              <p>Number of classes for the classification task.</p>
+              <p>Number of classes.</p>
             </div>
           </td>
           <td>
@@ -656,8 +684,7 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
 
           <details class="quote">
             <summary>Source code in <code>cesnet_models\models.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 89</span>
-<span class="normal"> 90</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 90</span>
 <span class="normal"> 91</span>
 <span class="normal"> 92</span>
 <span class="normal"> 93</span>
@@ -702,7 +729,8 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
-<span class="normal">135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">mm_cesnet_v2</span><span class="p">(</span><span class="n">weights</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MM_CESNET_V2_Weights</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="normal">135</span>
+<span class="normal">136</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">mm_cesnet_v2</span><span class="p">(</span><span class="n">weights</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MM_CESNET_V2_Weights</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">model_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">num_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">flowstats_input_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -714,7 +742,7 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
 
 <span class="sd">    Changes from the first version:</span>
 <span class="sd">        - Global pooling was added to the CNN part processing PPI sequences, instead of a simple flattening.</span>
-<span class="sd">        - One more Conv1d layer was added to the CNN part and the number of channels was increased.</span>
+<span class="sd">        - One more Conv1D layer was added to the CNN part and the number of channels was increased.</span>
 <span class="sd">        - The size of the MLP processing flow statistics was increased.</span>
 <span class="sd">        - The size of the MLP processing shared representations was decreased.</span>
 <span class="sd">        - Some dropout rates were decreased.</span>
@@ -722,7 +750,7 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
 <span class="sd">    Parameters:</span>
 <span class="sd">        weights: If provided, the model will be initialized with these weights.</span>
 <span class="sd">        model_dir: If weights are provided, this folder will be used to store the weights.</span>
-<span class="sd">        num_classes: Number of classes for the classification task.</span>
+<span class="sd">        num_classes: Number of classes.</span>
 <span class="sd">        flowstats_input_size: Size of the flow statistics input.</span>
 <span class="sd">        ppi_input_channels: Number of channels in the PPI input.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -827,7 +855,7 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
           </td>
           <td>
             <div class="doc-md-description">
-              <p>Number of classes for the classification task.</p>
+              <p>Number of classes.</p>
             </div>
           </td>
           <td>
@@ -867,8 +895,7 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
 
           <details class="quote">
             <summary>Source code in <code>cesnet_models\models.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">181</span>
-<span class="normal">182</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">182</span>
 <span class="normal">183</span>
 <span class="normal">184</span>
 <span class="normal">185</span>
@@ -905,7 +932,8 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
 <span class="normal">216</span>
 <span class="normal">217</span>
 <span class="normal">218</span>
-<span class="normal">219</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">mm_cesnet_v1</span><span class="p">(</span><span class="n">weights</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MM_CESNET_V1_Weights</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="normal">219</span>
+<span class="normal">220</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">mm_cesnet_v1</span><span class="p">(</span><span class="n">weights</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MM_CESNET_V1_Weights</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">model_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">num_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">flowstats_input_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -917,7 +945,7 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
 <span class="sd">    Parameters:</span>
 <span class="sd">        weights: If provided, the model will be initialized with these weights.</span>
 <span class="sd">        model_dir: If weights are provided, this folder will be used to store the weights.</span>
-<span class="sd">        num_classes: Number of classes for the classification task.</span>
+<span class="sd">        num_classes: Number of classes.</span>
 <span class="sd">        flowstats_input_size: Size of the flow statistics input.</span>
 <span class="sd">        ppi_input_channels: Number of channels in the PPI input.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

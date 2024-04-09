@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#jupyter-notebooks" class="md-skip">
+        <a href="#getting-started" class="md-skip">
           Skip to content
         </a>
       
@@ -317,6 +317,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -345,6 +347,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -355,6 +359,13 @@
         <li class="md-nav__item">
   <a href="#jupyter-notebooks" class="md-nav__link">
     Jupyter notebooks
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-snippets" class="md-nav__link">
+    Code snippets
   </a>
   
 </li>
@@ -424,7 +435,7 @@
         
   
   <span class="md-ellipsis">
-    Pre-trained models
+    Models
   </span>
   
 
@@ -478,6 +489,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -488,6 +501,13 @@
         <li class="md-nav__item">
   <a href="#jupyter-notebooks" class="md-nav__link">
     Jupyter notebooks
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-snippets" class="md-nav__link">
+    Code snippets
   </a>
   
 </li>
@@ -510,14 +530,21 @@
   
 
 
-  <h1>Getting started</h1>
-
+<h1 id="getting-started">Getting started</h1>
 <h2 id="jupyter-notebooks">Jupyter notebooks</h2>
 <p>Example Jupyter notebooks are provided at <a href="https://github.com/CESNET/cesnet-tcexamples">https://github.com/CESNET/cesnet-tcexamples</a>. Start with:</p>
 <ul>
+<li>Training of a neural network from scratch with data transformations - <a href="https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/example_train_nn.ipynb">example_train_nn.ipynb</a></li>
 <li>Evaluate a pre-trained neural network I (TLS) - <a href="https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/reproduce_tls.ipynb">reproduce_tls.ipynb</a></li>
 <li>Evaluate a pre-trained neural network II (QUIC) - <a href="https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/reproduce_quic.ipynb">reproduce_quic.ipynb</a></li>
 </ul>
+<h2 id="code-snippets">Code snippets</h2>
+<p><div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cesnet_models.models</span> <span class="kn">import</span> <span class="n">MM_CESNET_V2_Weights</span><span class="p">,</span> <span class="n">mm_cesnet_v2</span>
+
+<span class="n">pretrained_weights</span> <span class="o">=</span> <span class="n">MM_CESNET_V2_Weights</span><span class="o">.</span><span class="n">CESNET_QUIC22_Week44</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">mm_cesnet_v2</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">pretrained_weights</span><span class="p">,</span> <span class="n">model_dir</span><span class="o">=</span><span class="s2">&quot;models/&quot;</span><span class="p">)</span>
+</code></pre></div>
+This code will download pre-trained weights into the specified folder and initialize the mm-CESNET-v2 model. Available pre-trained weights for this model are listed in the MM_CESNET_V2_Weights enum and are named based on the dataset and training time period. When weights are specified, the model is set in the <a href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.eval">evaluation mode</a> by default using <code>model.eval()</code>. To train the model, you should first set it back in the training mode with <code>model.train()</code>.</p>
 
 
   
