@@ -55,7 +55,7 @@ class ClipAndScalePPI(nn.Module):
     Transform class for scaling of per-packet information (PPI) sequences. This transform clips packet sizes and inter-packet times and scales them using a specified scaler.
     This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.
 
-    When used with the CESNET DataZoo package, the transform will be fitted during dataset initialization. Otherwise, the `psizes_scaler_attrs` and `ipt_scaler_attrs` must be provided.
+    When used with the `cesnet-datazoo` package, the transform will be fitted during dataset initialization. Otherwise, the `psizes_scaler_attrs` and `ipt_scaler_attrs` must be provided.
     The required entries in `psizes_scaler_attrs` and `ipt_scaler_attrs` depend on the scaler used.
 
     - For `StandardScaler`, the required attributes are `mean_` and `scale_`.
@@ -164,7 +164,7 @@ class ClipAndScaleFlowstats(nn.Module):
     Transform class for scaling of features describing an entire network flow -- called flow statistics. This transform clips flow statistics to their `quantile_clip` quantile and scales them using a specified scaler.
     This class inherits from `nn.Module`, and the data transformation is implemented in the `forward` method.
 
-    When used with the CESNET DataZoo package, the transform will be fitted during dataset initialization. Otherwise, the `flowstats_scaler_attrs` must be provided.
+    When used with the `cesnet-datazoo` package, the transform will be fitted during dataset initialization. Otherwise, the `flowstats_scaler_attrs` must be provided.
     The required entries in `flowstats_scaler_attrs` depend on the scaler used.
 
     - For `StandardScaler`, the required attributes are `mean_` and `scale_`.

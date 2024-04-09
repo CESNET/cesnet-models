@@ -23,6 +23,7 @@ markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.superfences
+  - attr_list
 
 extra:
   analytics:
@@ -35,5 +36,5 @@ nav:
   - Tutorials:
     - Getting started: getting_started.md
   - Reference:
-    - Pre-trained models: reference_models.md
+    - Models: reference_models.md
     - Transforms: reference_transforms.md

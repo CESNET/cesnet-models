@@ -1,5 +1,4 @@
 # Data transformations
-Available data transformations.
 
 ::: transforms.ClipAndScalePPI
     options:

@@ -98,7 +98,7 @@ def mm_cesnet_v2(weights: Optional[MM_CESNET_V2_Weights] = None,
 
     Changes from the first version:
         - Global pooling was added to the CNN part processing PPI sequences, instead of a simple flattening.
-        - One more Conv1d layer was added to the CNN part and the number of channels was increased.
+        - One more Conv1D layer was added to the CNN part and the number of channels was increased.
         - The size of the MLP processing flow statistics was increased.
         - The size of the MLP processing shared representations was decreased.
         - Some dropout rates were decreased.
@@ -106,7 +106,7 @@ def mm_cesnet_v2(weights: Optional[MM_CESNET_V2_Weights] = None,
     Parameters:
         weights: If provided, the model will be initialized with these weights.
         model_dir: If weights are provided, this folder will be used to store the weights.
-        num_classes: Number of classes for the classification task.
+        num_classes: Number of classes.
         flowstats_input_size: Size of the flow statistics input.
         ppi_input_channels: Number of channels in the PPI input.
     """
@@ -190,7 +190,7 @@ def mm_cesnet_v1(weights: Optional[MM_CESNET_V1_Weights] = None,
     Parameters:
         weights: If provided, the model will be initialized with these weights.
         model_dir: If weights are provided, this folder will be used to store the weights.
-        num_classes: Number of classes for the classification task.
+        num_classes: Number of classes.
         flowstats_input_size: Size of the flow statistics input.
         ppi_input_channels: Number of channels in the PPI input.
     """
