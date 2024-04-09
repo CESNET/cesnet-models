@@ -16,8 +16,8 @@ Models from the following papers are included:
 
 * [Fine-grained TLS services classification with reject option](https://doi.org/10.1016/j.comnet.2022.109467) <br>
 Jan Luxemburk and Tomáš Čejka <br>
-Computer Networks
+Computer Networks, 2023
 
-* [Encrypted traffic classification: the QUIC case](https://doi.org/10.1016/10.23919/TMA58422.2023.10199052) <br>
+* [Encrypted traffic classification: the QUIC case](https://doi.org/10.23919/TMA58422.2023.10199052) <br>
 Jan Luxemburk and Karel Hynek <br>
 2023 7th Network Traffic Measurement and Analysis Conference (TMA)
