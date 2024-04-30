@@ -44,7 +44,7 @@ class GeM(nn.Module):
         self.eps = eps
 
     def forward(self, x):
-        return self.gem(x, p=self.p, eps=self.eps)
+        return self.gem(x, p=self.p, eps=self.eps) # type: ignore
 
     def gem(self, x, p: int | nn.Parameter = 3, eps=1e-6):
         return F.avg_pool1d(x.clamp(min=eps).pow(p), self.kernel_size).pow(1./p)
@@ -58,116 +58,116 @@ class Multimodal_CESNET(nn.Module):
     def __init__(self, num_classes: int,
                        flowstats_input_size: int,
                        ppi_input_channels: int,
-                       use_flowstats: bool = True, add_ppi_to_flowstats: bool = False,
+                       use_flowstats: bool = True, add_ppi_to_mlp_flowstats: bool = False,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM,
-                       cnn_channels1: int = 200, cnn_channels2: int = 300, cnn_channels3: int = 300, cnn_num_hidden: int = 3, cnn_depthwise: bool = False,
-                       cnn_use_pooling: bool = True, cnn_dropout_rate: float = 0.1,
-                       flowstats_size: int = 225, flowstats_out_size: int = 225, flowstats_num_hidden: int = 2, flowstats_dropout_rate: float = 0.1,
-                       latent_size: int = 600, latent_num_hidden: int = 0, latent_dropout_rate: float = 0.2,
+                       cnn_ppi_channels1: int = 200, cnn_ppi_channels2: int = 300, cnn_ppi_channels3: int = 300, cnn_ppi_num_blocks: int = 3, cnn_ppi_depthwise: bool = False,
+                       cnn_ppi_use_pooling: bool = True, cnn_ppi_dropout_rate: float = 0.1,
+                       mlp_flowstats_size1: int = 225, mlp_flowstats_size2: int = 225, mlp_flowstats_num_hidden: int = 2, mlp_flowstats_dropout_rate: float = 0.1,
+                       mlp_shared_size: int = 600, mlp_shared_num_hidden: int = 0, mlp_shared_dropout_rate: float = 0.2,
                        ):
         super().__init__()
-        if add_ppi_to_flowstats and not use_flowstats:
-            raise ValueError("add_ppi_to_flowstats requires use_flowstats")
-        if cnn_depthwise and cnn_channels1 % ppi_input_channels != 0:
-            raise ValueError(f"cnn_channels1 ({cnn_channels1}) must be divisible by ppi_input_channels ({ppi_input_channels}) when using cnn_depthwise")
+        if add_ppi_to_mlp_flowstats and not use_flowstats:
+            raise ValueError("add_ppi_to_mlp_flowstats requires use_flowstats")
+        if cnn_ppi_depthwise and cnn_ppi_channels1 % ppi_input_channels != 0:
+            raise ValueError(f"cnn_ppi_channels1 ({cnn_ppi_channels1}) must be divisible by ppi_input_channels ({ppi_input_channels}) when using cnn_ppi_depthwise")
 
         self.num_classes = num_classes
         self.flowstats_input_size = flowstats_input_size
         self.ppi_input_channels = ppi_input_channels
         self.use_flowstats = use_flowstats
-        self.add_ppi_to_flowstats = add_ppi_to_flowstats
-        self.latent_size = latent_size
-        self.cnn_use_pooling = cnn_use_pooling
+        self.add_ppi_to_mlp_flowstats = add_ppi_to_mlp_flowstats
+        self.mlp_shared_size = mlp_shared_size
+        self.cnn_ppi_use_pooling = cnn_ppi_use_pooling
 
         CNN_PPI_OUTPUT_LEN = 10
         PPI_LEN = 30
         conv_norm = partial(conv_norm_from_enum, norm_enum=conv_normalization)
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
-        conv1d_groups = ppi_input_channels if cnn_depthwise else 1
-        mlp_flowstats_input_size = flowstats_input_size + (ppi_input_channels * PPI_LEN) if add_ppi_to_flowstats else flowstats_input_size
-        mlp_shared_input_size = flowstats_out_size if use_flowstats else 0
-        if cnn_use_pooling:
-            mlp_shared_input_size += cnn_channels3
+        conv1d_groups = ppi_input_channels if cnn_ppi_depthwise else 1
+        mlp_flowstats_input_size = flowstats_input_size + (ppi_input_channels * PPI_LEN) if add_ppi_to_mlp_flowstats else flowstats_input_size
+        mlp_shared_input_size = mlp_flowstats_size2 if use_flowstats else 0
+        if cnn_ppi_use_pooling:
+            mlp_shared_input_size += cnn_ppi_channels3
         else:
-            mlp_shared_input_size += cnn_channels3 * CNN_PPI_OUTPUT_LEN
+            mlp_shared_input_size += cnn_ppi_channels3 * CNN_PPI_OUTPUT_LEN
 
         self.cnn_ppi = nn.Sequential(
             # [(W−K+2P)/S]+1
             # Input: 30 * 3
-            nn.Conv1d(self.ppi_input_channels, cnn_channels1, kernel_size=7, stride=1, groups=conv1d_groups, padding=3),
+            nn.Conv1d(self.ppi_input_channels, cnn_ppi_channels1, kernel_size=7, stride=1, groups=conv1d_groups, padding=3),
             nn.ReLU(inplace=False),
-            *conv_norm(cnn_channels1),
+            *conv_norm(cnn_ppi_channels1),
 
             # 30 x channels1
             *(nn.Sequential(
-                nn.Conv1d(cnn_channels1, cnn_channels1, kernel_size=5, stride=1, groups=conv1d_groups, padding=2),
+                nn.Conv1d(cnn_ppi_channels1, cnn_ppi_channels1, kernel_size=5, stride=1, groups=conv1d_groups, padding=2),
                 nn.ReLU(inplace=False),
-                *conv_norm(cnn_channels1),) for _ in range(cnn_num_hidden)),
+                *conv_norm(cnn_ppi_channels1),) for _ in range(cnn_ppi_num_blocks)),
 
             # 30 x channels1
-            nn.Conv1d(cnn_channels1, cnn_channels2, kernel_size=5, stride=1),
+            nn.Conv1d(cnn_ppi_channels1, cnn_ppi_channels2, kernel_size=5, stride=1),
             nn.ReLU(inplace=False),
-            *conv_norm(cnn_channels2),
+            *conv_norm(cnn_ppi_channels2),
             # 26 * channels2
-            nn.Conv1d(cnn_channels2, cnn_channels2, kernel_size=5, stride=1),
+            nn.Conv1d(cnn_ppi_channels2, cnn_ppi_channels2, kernel_size=5, stride=1),
             nn.ReLU(inplace=False),
-            *conv_norm(cnn_channels2),
+            *conv_norm(cnn_ppi_channels2),
             # 22 * channels2
-            nn.Conv1d(cnn_channels2, cnn_channels3, kernel_size=4, stride=2),
+            nn.Conv1d(cnn_ppi_channels2, cnn_ppi_channels3, kernel_size=4, stride=2),
             nn.ReLU(inplace=False),
             # 10 * channels3
             # CNN_PPI_OUTPUT_LEN = 10
         )
-        if cnn_use_pooling:
+        if cnn_ppi_use_pooling:
             self.cnn_global_pooling = nn.Sequential(
                 GeM(kernel_size=CNN_PPI_OUTPUT_LEN),
                 nn.Flatten(),
-                *linear_norm(cnn_channels3),
-                nn.Dropout(cnn_dropout_rate),
+                *linear_norm(cnn_ppi_channels3),
+                nn.Dropout(cnn_ppi_dropout_rate),
             )
         else:
             self.cnn_flatten_without_pooling = nn.Sequential(
                 nn.Flatten(),
-                *linear_norm(cnn_channels3 * CNN_PPI_OUTPUT_LEN),
-                nn.Dropout(cnn_dropout_rate),
+                *linear_norm(cnn_ppi_channels3 * CNN_PPI_OUTPUT_LEN),
+                nn.Dropout(cnn_ppi_dropout_rate),
             )
         self.mlp_flowstats = nn.Sequential(
-            nn.Linear(mlp_flowstats_input_size, flowstats_size),
+            nn.Linear(mlp_flowstats_input_size, mlp_flowstats_size1),
             nn.ReLU(inplace=False),
-            *linear_norm(flowstats_size),
+            *linear_norm(mlp_flowstats_size1),
 
             *(nn.Sequential(
-                nn.Linear(flowstats_size, flowstats_size),
+                nn.Linear(mlp_flowstats_size1, mlp_flowstats_size1),
                 nn.ReLU(inplace=False),
-                *linear_norm(flowstats_size)) for _ in range(flowstats_num_hidden)),
+                *linear_norm(mlp_flowstats_size1)) for _ in range(mlp_flowstats_num_hidden)),
 
-            nn.Linear(flowstats_size, flowstats_out_size),
+            nn.Linear(mlp_flowstats_size1, mlp_flowstats_size2),
             nn.ReLU(inplace=False),
-            *linear_norm(flowstats_out_size),
-            nn.Dropout(flowstats_dropout_rate),
+            *linear_norm(mlp_flowstats_size2),
+            nn.Dropout(mlp_flowstats_dropout_rate),
         )
         self.mlp_shared = nn.Sequential(
-            nn.Linear(mlp_shared_input_size, latent_size),
+            nn.Linear(mlp_shared_input_size, mlp_shared_size),
             nn.ReLU(inplace=False),
-            *linear_norm(latent_size),
-            nn.Dropout(latent_dropout_rate),
+            *linear_norm(mlp_shared_size),
+            nn.Dropout(mlp_shared_dropout_rate),
 
             *(nn.Sequential(
-                nn.Linear(latent_size, latent_size),
+                nn.Linear(mlp_shared_size, mlp_shared_size),
                 nn.ReLU(inplace=False),
-                *linear_norm(latent_size),
-                nn.Dropout(latent_dropout_rate)) for _ in range(latent_num_hidden)),
+                *linear_norm(mlp_shared_size),
+                nn.Dropout(mlp_shared_dropout_rate)) for _ in range(mlp_shared_num_hidden)),
         )
-        self.classifier = nn.Linear(latent_size, num_classes)
+        self.classifier = nn.Linear(mlp_shared_size, num_classes)
 
     def _forward_impl(self, ppi, flowstats):
         out = self.cnn_ppi(ppi)
-        if self.cnn_use_pooling:
+        if self.cnn_ppi_use_pooling:
             out = self.cnn_global_pooling(out)
         else:
             out = self.cnn_flatten_without_pooling(out)
         if self.use_flowstats:
-            if self.add_ppi_to_flowstats:
+            if self.add_ppi_to_mlp_flowstats:
                 flowstats_input = torch.column_stack([torch.flatten(ppi, 1), flowstats])
             else:
                 flowstats_input = flowstats

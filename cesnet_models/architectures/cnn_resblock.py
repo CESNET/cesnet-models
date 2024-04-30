@@ -37,16 +37,16 @@ class CNN_ResBlock(nn.Module):
     def __init__(self,
                  num_classes: int,
                  ppi_input_channels: int = 3,
-                 cnn_channels1: int = 64,
-                 cnn_channels2: int = 128,
+                 channels1: int = 64,
+                 channels2: int = 128,
                  ):
             super().__init__()
 
-            self.conv1 = nn.Conv1d(ppi_input_channels, cnn_channels1, kernel_size=3, stride=1, padding=1)
-            self.bn1 = nn.BatchNorm1d(cnn_channels1)
-            self.block1 = ResBlock(cnn_channels1, cnn_channels1)
-            self.block2 = ResBlock(cnn_channels1, cnn_channels2)
-            self.classifier = nn.Linear(cnn_channels2, num_classes)
+            self.conv1 = nn.Conv1d(ppi_input_channels, channels1, kernel_size=3, stride=1, padding=1)
+            self.bn1 = nn.BatchNorm1d(channels1)
+            self.block1 = ResBlock(channels1, channels1)
+            self.block2 = ResBlock(channels1, channels2)
+            self.classifier = nn.Linear(channels2, num_classes)
 
     def _forward_impl(self, ppi):
         out = self.conv1(ppi)
