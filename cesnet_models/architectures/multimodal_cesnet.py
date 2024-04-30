@@ -8,14 +8,17 @@ from torch import Tensor, nn
 
 class NormalizationEnum(Enum):
     BATCH_NORM = "batch-norm"
+    GROUP_NORM = "group-norm"
     LAYER_NORM = "layer-norm"
     INSTANCE_NORM = "instance-norm"
     NO_NORM = "no-norm"
     def __str__(self): return self.value
 
-def conv_norm_from_enum(size: int, norm_enum: NormalizationEnum):
+def conv_norm_from_enum(size: int, norm_enum: NormalizationEnum, group_norm_groups: int = 8):
     if norm_enum == NormalizationEnum.BATCH_NORM:
         return [nn.BatchNorm1d(size)]
+    elif norm_enum == NormalizationEnum.GROUP_NORM:
+        return [nn.GroupNorm(num_groups=group_norm_groups, num_channels=size)]
     elif norm_enum == NormalizationEnum.INSTANCE_NORM:
         return [nn.InstanceNorm1d(size)]
     elif norm_enum == NormalizationEnum.NO_NORM:
