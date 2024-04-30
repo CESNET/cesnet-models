@@ -6,10 +6,7 @@ from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 from torch import nn
 from typing_extensions import assert_never
 
-IPT_POS = 0
-DIR_POS = 1
-SIZE_POS = 2
-PHIST_BIN_COUNT = 8
+from cesnet_models.constants import PHIST_BIN_COUNT, PPI_DIR_POS, PPI_IPT_POS, PPI_SIZE_POS
 
 
 def get_scaler_attrs(scaler: StandardScaler | RobustScaler | MinMaxScaler) -> dict[str, list[float]]:
@@ -48,6 +45,7 @@ class ScalerEnum(str, Enum):
     """Robust scaling with the median and the interquartile range - [`RobustScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html)."""
     MINMAX = "minmax"
     """Scaling to a (0, 1) range - [`MinMaxScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html)."""
+    NO_SCALING = "no-scaling"
     def __str__(self): return self.value
 
 class ClipAndScalePPI(nn.Module):
@@ -68,8 +66,8 @@ class ClipAndScalePPI(nn.Module):
         The zero padding in PPI sequences is preserved during scaling, i.e., the padding zeroes are kept in the output.
 
     Parameters:
-        psizes_scaler_enum: What scaler should be used for packet sizes. Options are standard, robust, and minmax.
-        ipt_scaler_enum: What scaler should be used for inter-packet times. Options are standard, robust, and minmax.
+        psizes_scaler_enum: What scaler should be used for packet sizes. Options are standard, robust, minmax, and no-scaling.
+        ipt_scaler_enum: What scaler should be used for inter-packet times. Options are standard, robust, minmax, and no-scaling.
         pszies_min: Clip packet sizes to this minimum value.
         psizes_max: Clip packet sizes to this maximum value.
         ipt_min: Clip inter-packet times to this minimum value.
@@ -77,8 +75,8 @@ class ClipAndScalePPI(nn.Module):
         psizes_scaler_attrs: To use a pre-fitted packet sizes scaler, provide its attributes here.
         ipt_scaler_attrs: To use a pre-fitted inter-packet times scaler, provide its attributes here.
     """
-    psizes_scaler: StandardScaler | RobustScaler | MinMaxScaler
-    ipt_scaler: StandardScaler | RobustScaler | MinMaxScaler
+    psizes_scaler: StandardScaler | RobustScaler | MinMaxScaler | None
+    ipt_scaler: StandardScaler | RobustScaler | MinMaxScaler | None
     pszies_min: int
     psizes_max: int
     ipt_min: int
@@ -100,6 +98,8 @@ class ClipAndScalePPI(nn.Module):
             self.psizes_scaler = RobustScaler()
         elif psizes_scaler_enum == ScalerEnum.MINMAX:
             self.psizes_scaler = MinMaxScaler()
+        elif psizes_scaler_enum == ScalerEnum.NO_SCALING:
+            self.psizes_scaler = None
         else:
             raise ValueError(f"psizes_scaler_enum must be one of {ScalerEnum.__members__}")
         if ipt_scaler_enum == ScalerEnum.STANDARD:
@@ -108,6 +108,8 @@ class ClipAndScalePPI(nn.Module):
             self.ipt_scaler = RobustScaler()
         elif ipt_scaler_enum == ScalerEnum.MINMAX:
             self.ipt_scaler = MinMaxScaler()
+        elif ipt_scaler_enum == ScalerEnum.NO_SCALING:
+            self.ipt_scaler = None
         else:
             raise ValueError(f"ipt_scaler_enum must be one of {ScalerEnum.__members__}")
         self.pszies_min = pszies_min
@@ -117,14 +119,11 @@ class ClipAndScalePPI(nn.Module):
         self._psizes_scaler_enum = psizes_scaler_enum
         self._ipt_scaler_enum = ipt_scaler_enum
 
-        if psizes_scaler_attrs is None and ipt_scaler_attrs is None:
-            self.needs_fitting = True
-        elif psizes_scaler_attrs is not None and ipt_scaler_attrs is not None:
+        if self.psizes_scaler and psizes_scaler_attrs is not None:
             set_scaler_attrs(scaler=self.psizes_scaler, scaler_attrs=psizes_scaler_attrs)
+        if self.ipt_scaler and ipt_scaler_attrs is not None:
             set_scaler_attrs(scaler=self.ipt_scaler, scaler_attrs=ipt_scaler_attrs)
-            self.needs_fitting = False
-        else:
-            raise ValueError("psizes_scaler_attrs and ipt_scaler_attrs must be both set or both None")
+        self.needs_fitting = (self.ipt_scaler and ipt_scaler_attrs is None) or (self.psizes_scaler and psizes_scaler_attrs is None)
 
     def forward(self, x_ppi: np.ndarray) -> np.ndarray:
         if self.needs_fitting:
@@ -133,24 +132,26 @@ class ClipAndScalePPI(nn.Module):
         orig_shape = x_ppi.shape
         ppi_channels = x_ppi.shape[-1]
         x_ppi = x_ppi.reshape(-1, ppi_channels)
-        x_ppi[:, IPT_POS] = x_ppi[:, IPT_POS].clip(max=self.ipt_max, min=self.ipt_min)
-        x_ppi[:, SIZE_POS] = x_ppi[:, SIZE_POS].clip(max=self.psizes_max, min=self.pszies_min)
-        padding_mask = x_ppi[:, DIR_POS] == 0 # Mask of zero padding
-        x_ppi[:, IPT_POS] = self.ipt_scaler.transform(x_ppi[:, IPT_POS].reshape(-1, 1)).reshape(-1) # type: ignore
-        x_ppi[:, SIZE_POS] = self.psizes_scaler.transform(x_ppi[:, SIZE_POS].reshape(-1, 1)).reshape(-1) # type: ignore
-        x_ppi[padding_mask, IPT_POS] = 0
-        x_ppi[padding_mask, SIZE_POS] = 0
+        x_ppi[:, PPI_IPT_POS] = x_ppi[:, PPI_IPT_POS].clip(max=self.ipt_max, min=self.ipt_min)
+        x_ppi[:, PPI_SIZE_POS] = x_ppi[:, PPI_SIZE_POS].clip(max=self.psizes_max, min=self.pszies_min)
+        padding_mask = x_ppi[:, PPI_DIR_POS] == 0 # Mask of zero padding
+        if self.ipt_scaler is not None:
+            x_ppi[:, PPI_IPT_POS] = self.ipt_scaler.transform(x_ppi[:, PPI_IPT_POS].reshape(-1, 1)).reshape(-1) # type: ignore
+        if self.psizes_scaler is not None:
+            x_ppi[:, PPI_SIZE_POS] = self.psizes_scaler.transform(x_ppi[:, PPI_SIZE_POS].reshape(-1, 1)).reshape(-1) # type: ignore
+        x_ppi[padding_mask, PPI_IPT_POS] = 0
+        x_ppi[padding_mask, PPI_SIZE_POS] = 0
         x_ppi = x_ppi.reshape(orig_shape).transpose(0, 2, 1)
         return x_ppi
-    
+
     def to_dict(self) -> dict:
         d = {
             "psizes_scaler_enum": str(self._psizes_scaler_enum),
-            "psizes_scaler_attrs": get_scaler_attrs(self.psizes_scaler),
+            "psizes_scaler_attrs": get_scaler_attrs(self.psizes_scaler) if self.psizes_scaler is not None else None,
             "pszies_min": self.pszies_min,
             "psizes_max": self.psizes_max,
             "ipt_scaler_enum": str(self._ipt_scaler_enum),
-            "ipt_scaler_attrs": get_scaler_attrs(self.ipt_scaler),
+            "ipt_scaler_attrs": get_scaler_attrs(self.ipt_scaler) if self.ipt_scaler is not None else None,
             "ipt_min": self.ipt_min,
             "ipt_max": self.ipt_max,
         }
@@ -207,7 +208,7 @@ class ClipAndScaleFlowstats(nn.Module):
             self.flowstats_quantiles = flowstats_quantiles
             self.needs_fitting = False
         else:
-            raise ValueError("flowstats_quantiles and scaler_attrs must be both set or both None")
+            raise ValueError("flowstats_quantiles and flowstats_scaler_attrs must be both set or both None")
 
     def forward(self, x_flowstats: np.ndarray) -> np.ndarray:
         if self.needs_fitting:
@@ -239,14 +240,15 @@ class NormalizeHistograms(nn.Module):
     """
     def __init__(self) -> None:
         super().__init__()
+        self.bins = PHIST_BIN_COUNT
 
     def forward(self, x_flowstats_phist: np.ndarray) -> np.ndarray:
-        src_sizes_pkt_count = x_flowstats_phist[:, :PHIST_BIN_COUNT].sum(axis=1)[:, np.newaxis]
-        dst_sizes_pkt_count = x_flowstats_phist[:, PHIST_BIN_COUNT:(2*PHIST_BIN_COUNT)].sum(axis=1)[:, np.newaxis]
-        np.divide(x_flowstats_phist[:, :PHIST_BIN_COUNT], src_sizes_pkt_count, out=x_flowstats_phist[:, :PHIST_BIN_COUNT], where=src_sizes_pkt_count != 0)
-        np.divide(x_flowstats_phist[:, PHIST_BIN_COUNT:(2*PHIST_BIN_COUNT)], dst_sizes_pkt_count, out=x_flowstats_phist[:, PHIST_BIN_COUNT:(2*PHIST_BIN_COUNT)], where=dst_sizes_pkt_count != 0)
-        np.divide(x_flowstats_phist[:, (2*PHIST_BIN_COUNT):(3*PHIST_BIN_COUNT)], src_sizes_pkt_count - 1, out=x_flowstats_phist[:, (2*PHIST_BIN_COUNT):(3*PHIST_BIN_COUNT)], where=src_sizes_pkt_count > 1)
-        np.divide(x_flowstats_phist[:, (3*PHIST_BIN_COUNT):(4*PHIST_BIN_COUNT)], dst_sizes_pkt_count - 1, out=x_flowstats_phist[:, (3*PHIST_BIN_COUNT):(4*PHIST_BIN_COUNT)], where=dst_sizes_pkt_count > 1)
+        src_sizes_pkt_count = x_flowstats_phist[:, :self.bins].sum(axis=1)[:, np.newaxis]
+        dst_sizes_pkt_count = x_flowstats_phist[:, self.bins:(2*self.bins)].sum(axis=1)[:, np.newaxis]
+        np.divide(x_flowstats_phist[:, :self.bins], src_sizes_pkt_count, out=x_flowstats_phist[:, :self.bins], where=src_sizes_pkt_count != 0)
+        np.divide(x_flowstats_phist[:, self.bins:(2*self.bins)], dst_sizes_pkt_count, out=x_flowstats_phist[:, self.bins:(2*self.bins)], where=dst_sizes_pkt_count != 0)
+        np.divide(x_flowstats_phist[:, (2*self.bins):(3*self.bins)], src_sizes_pkt_count - 1, out=x_flowstats_phist[:, (2*self.bins):(3*self.bins)], where=src_sizes_pkt_count > 1)
+        np.divide(x_flowstats_phist[:, (3*self.bins):(4*self.bins)], dst_sizes_pkt_count - 1, out=x_flowstats_phist[:, (3*self.bins):(4*self.bins)], where=dst_sizes_pkt_count > 1)
         return x_flowstats_phist
 
     def __repr__(self) -> str:
