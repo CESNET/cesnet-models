@@ -57,17 +57,160 @@ class StdConv1d(nn.Conv1d):
         x = F.conv1d(x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
         return x
 
+class BasicBlock(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            act=None,
+            conv=None,
+            norm=None,
+            dropout_rate_path=0.0,
+            downsample_avg=False,
+    ):
+        super().__init__()
+        act = act or nn.ReLU
+        conv = conv or StdConv1d
+        norm = norm or partial(nn.GroupNorm, num_groups=16)
+
+        if stride > 1 or in_channels != out_channels:
+            if downsample_avg:
+                self.downsample = nn.Sequential(
+                    nn.AvgPool1d(kernel_size=2, stride=stride, ceil_mode=True) if stride > 1 else nn.Identity(),
+                    conv(in_channels, out_channels, kernel_size=1, stride=1),
+                    norm(out_channels),)
+            else:
+                self.downsample = nn.Sequential(
+                    conv(in_channels, out_channels, kernel_size=1, stride=stride),
+                    norm(out_channels),)
+        else:
+            self.downsample = None
+
+        self.conv1 = conv(in_channels, out_channels, kernel_size=kernel_size, stride=stride)
+        self.norm1 = norm(out_channels)
+        self.conv2 = conv(out_channels, out_channels, kernel_size=3)
+        self.norm2 = norm(out_channels)
+        self.drop_path = nn.Dropout(dropout_rate_path) if dropout_rate_path > 0 else nn.Identity()
+        self.act = act(inplace=True)
+
+    def forward(self, x):
+        # shortcut branch
+        shortcut = x
+        if self.downsample is not None:
+            shortcut = self.downsample(x)
+
+        # residual
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.act(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+
+        out = self.drop_path(out)
+        out = self.act(out + shortcut)
+        return out
+
+class Bottleneck(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            act=None,
+            conv=None,
+            norm=None,
+            dropout_rate_path=0.0,
+            bottle_ratio=0.25,
+            downsample_avg=False,
+    ):
+        super().__init__()
+        act = act or nn.ReLU
+        conv = conv or StdConv1d
+        if norm is None:
+            norm = lambda x: nn.GroupNorm(num_groups=16, num_channels=x)
+        mid_channels = int(out_channels * bottle_ratio)
+
+        if stride > 1 or in_channels != out_channels:
+            if downsample_avg:
+                self.downsample = nn.Sequential(
+                    nn.AvgPool1d(kernel_size=2, stride=stride, ceil_mode=True) if stride > 1 else nn.Identity(),
+                    conv(in_channels, out_channels, kernel_size=1, stride=1),
+                    norm(out_channels),)
+            else:
+                self.downsample = nn.Sequential(
+                    conv(in_channels, out_channels, kernel_size=1, stride=stride),
+                    norm(out_channels),)
+        else:
+            self.downsample = None
+
+        self.conv1 = conv(in_channels, mid_channels, kernel_size=1)
+        self.norm1 = norm(mid_channels)
+        self.conv2 = conv(mid_channels, mid_channels, kernel_size=kernel_size, stride=stride)
+        self.norm2 = norm(mid_channels)
+        self.conv3 = conv(mid_channels, out_channels, kernel_size=1)
+        self.norm3 = norm(out_channels)
+        self.drop_path = nn.Dropout(dropout_rate_path) if dropout_rate_path > 0 else nn.Identity()
+        self.act = act(inplace=True)
+
+    def forward(self, x):
+        # shortcut branch
+        shortcut = x
+        if self.downsample is not None:
+            shortcut = self.downsample(x)
+
+        # residual
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.act(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.act(out)
+
+        out = self.conv3(out)
+        out = self.norm3(out)
+        out = self.drop_path(out)
+        out = self.act(out + shortcut)
+        return out
+
+def build_cnn_ppi(channels: tuple[int, ...], strides: tuple[int, ...], kernel_sizes: tuple[int, ...], conv1_input_channels: int, conv, norm, dropout_rate_path: float = 0.0, downsample_avg=False, block_class=None):
+    assert len(channels) == len(strides) == len(kernel_sizes)
+    if block_class is None:
+        block_class = Bottleneck
+    num_blocks = len(channels)
+    blocks = []
+    block_dprs = [x.item() for x in torch.linspace(0, dropout_rate_path, num_blocks)]
+    for i in range(num_blocks):
+        in_channels = conv1_input_channels if i == 0 else channels[i - 1]
+        if i == 0 and block_class == Bottleneck:
+            kwargs = {"bottle_ratio": 0.5}
+        else:
+            kwargs = {}
+        blocks.append(block_class(in_channels=in_channels,
+                                  out_channels=channels[i],
+                                  kernel_size=kernel_sizes[i],
+                                  stride=strides[i],
+                                  dropout_rate_path=block_dprs[i],
+                                  downsample_avg=downsample_avg,
+                                  conv=conv,norm=norm, **kwargs))
+    return nn.Sequential(*blocks)
+
 class Multimodal_CESNET_Enhanced(nn.Module):
     def __init__(self, num_classes: int,
                        flowstats_input_size: int,
                        ppi_input_channels: int,
                        use_flowstats: bool = True,
                        init_weights: bool = True,
-                       packet_embedding_size: int = 4, packet_embedding_init: bool = False, packet_embedding_include_dirs: bool = False,
-                       conv_normalization: NormalizationEnum = NormalizationEnum.GROUP_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.LAYER_NORM, group_norm_groups: int = 32,
-                       cnn_ppi_channels1: int = 128, cnn_ppi_channels2: int = 256, cnn_ppi_channels3: int = 256, cnn_ppi_num_blocks: int = 3,
-                       cnn_ppi_global_pooling: GlobalPoolEnum = GlobalPoolEnum.AVG, cnn_ppi_dropout_rate: float = 0.1, use_standardized_conv: bool = True,
-                       mlp_flowstats_size1: int = 128, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 2, mlp_flowstats_dropout_rate: float = 0.1,
+                       packet_embedding_size: int = 6, packet_embedding_init: bool = False, packet_embedding_include_dirs: bool = False,
+                       conv_normalization: NormalizationEnum = NormalizationEnum.GROUP_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.LAYER_NORM, group_norm_groups: int = 16,
+                       cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 384), cnn_ppi_strides: tuple[int, ...] = (1, 1, 2, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 5, 5, 3),
+                       cnn_ppi_use_stdconv: bool = True, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout_rate: float = 0.0,
+                       cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.AVG, cnn_ppi_dropout_rate: float = 0.0,
+                       mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 2, mlp_flowstats_dropout_rate: float = 0.1,
                        mlp_shared_size: int = 512, mlp_shared_num_hidden: int = 0, mlp_shared_dropout_rate: float = 0.2,
                        ):
         super().__init__()
@@ -78,13 +221,11 @@ class Multimodal_CESNET_Enhanced(nn.Module):
         self.packet_embedding_size = packet_embedding_size
         self.packet_embedding_include_dirs = packet_embedding_include_dirs
         self.mlp_shared_size = mlp_shared_size
+        mlp_shared_input_size = cnn_ppi_channels[-1] + mlp_flowstats_size2 if use_flowstats else cnn_ppi_channels[-1]
 
-        CNN_PPI_OUTPUT_LEN = 10
-        conv = StdConv1d if use_standardized_conv else partial(nn.Conv1d, bias=False)
+        conv = StdConv1d if cnn_ppi_use_stdconv else partial(nn.Conv1d, bias=False)
         conv_norm = partial(conv_norm_from_enum, norm_enum=conv_normalization, group_norm_groups=group_norm_groups)
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
-        mlp_shared_input_size = cnn_ppi_channels3 + mlp_flowstats_size2 if use_flowstats else cnn_ppi_channels3
-
         if self.packet_embedding_size > 0:
             num_embeddings = 1500 * (2 if packet_embedding_include_dirs else 1) + 1
             self.packet_sizes_embedding = nn.Embedding(num_embeddings, packet_embedding_size, padding_idx=1500 if packet_embedding_include_dirs else 0)
@@ -101,67 +242,47 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                         inital_embedding = torch.zeros(packet_embedding_size)
                         inital_embedding[0] = size / 1500
                         self.packet_sizes_embedding.weight.data[i, :] = inital_embedding
+
         conv1_input_channels = ppi_input_channels if packet_embedding_size == 0 else packet_embedding_size + (1 if packet_embedding_include_dirs else 2)
-
-        self.cnn_ppi = nn.Sequential(
-            # [(W−K+2P)/S]+1
-            # Input: 30 * 3
-            conv(conv1_input_channels, cnn_ppi_channels1, kernel_size=7, stride=1, padding=3),
-            *conv_norm(cnn_ppi_channels1),
-            nn.ReLU(inplace=False),
-
-            # 30 x channels1
-            *(nn.Sequential(
-                conv(cnn_ppi_channels1, cnn_ppi_channels1, kernel_size=5, stride=1, padding=2),
-                *conv_norm(cnn_ppi_channels1),) for _ in range(cnn_ppi_num_blocks)),
-                nn.ReLU(inplace=False),
-
-            # 30 x channels1
-            conv(cnn_ppi_channels1, cnn_ppi_channels2, kernel_size=5, stride=2),
-            *conv_norm(cnn_ppi_channels2),
-            nn.ReLU(inplace=False),
-            # 15 * channels2
-            conv(cnn_ppi_channels2, cnn_ppi_channels2, kernel_size=4, stride=1),
-            *conv_norm(cnn_ppi_channels2),
-            nn.ReLU(inplace=False),
-            # 12 * channels2
-            conv(cnn_ppi_channels2, cnn_ppi_channels3, kernel_size=3, stride=1),
-            *conv_norm(cnn_ppi_channels3),
-            nn.ReLU(inplace=False),
-            # 10 * channels3
-            # CNN_PPI_OUTPUT_LEN = 10
-        )
+        self.cnn_ppi = build_cnn_ppi(channels=cnn_ppi_channels,
+                                     strides=cnn_ppi_strides,
+                                     kernel_sizes=cnn_ppi_kernel_sizes,
+                                     conv1_input_channels=conv1_input_channels,
+                                     dropout_rate_path=cnn_ppi_blocks_dropout_rate,
+                                     downsample_avg=cnn_ppi_downsample_avg,
+                                     conv=conv, norm=conv_norm)
         self.cnn_global_pooling = nn.Sequential(
-            nn.AvgPool1d(kernel_size=CNN_PPI_OUTPUT_LEN) if cnn_ppi_global_pooling == GlobalPoolEnum.AVG else nn.MaxPool1d(kernel_size=CNN_PPI_OUTPUT_LEN),
-            nn.Dropout(cnn_ppi_dropout_rate),
+            nn.AdaptiveAvgPool1d(output_size=1) if cnn_ppi_global_pool == GlobalPoolEnum.AVG else nn.AdaptiveMaxPool1d(output_size=1),
             nn.Flatten(),
+            nn.Dropout(cnn_ppi_dropout_rate),
+            nn.ReLU(inplace=True),
         )
         self.mlp_flowstats = nn.Sequential(
             nn.Linear(flowstats_input_size, mlp_flowstats_size1),
-            *linear_norm(mlp_flowstats_size1),
-            nn.ReLU(inplace=False),
+            linear_norm(mlp_flowstats_size1),
+            nn.ReLU(inplace=True),
 
             *(nn.Sequential(
                 nn.Linear(mlp_flowstats_size1, mlp_flowstats_size1),
-                *linear_norm(mlp_flowstats_size1)) for _ in range(mlp_flowstats_num_hidden)),
-                nn.ReLU(inplace=False),
+                linear_norm(mlp_flowstats_size1),
+                nn.ReLU(inplace=True),) for _ in range(mlp_flowstats_num_hidden)),
 
             nn.Linear(mlp_flowstats_size1, mlp_flowstats_size2),
-            *linear_norm(mlp_flowstats_size2),
+            linear_norm(mlp_flowstats_size2),
             nn.Dropout(mlp_flowstats_dropout_rate),
-            # nn.ReLU(inplace=False), # To have inputs for mlp_shared from both modalities without ReLU
+            nn.ReLU(inplace=True),
         )
         self.mlp_shared = nn.Sequential(
             nn.Linear(mlp_shared_input_size, mlp_shared_size),
-            *linear_norm(mlp_shared_size),
+            linear_norm(mlp_shared_size),
             nn.Dropout(mlp_shared_dropout_rate),
-            nn.ReLU(inplace=False),
+            nn.ReLU(inplace=True),
 
             *(nn.Sequential(
                 nn.Linear(mlp_shared_size, mlp_shared_size),
-                *linear_norm(mlp_shared_size),
+                linear_norm(mlp_shared_size),
                 nn.Dropout(mlp_shared_dropout_rate),
-                nn.ReLU(inplace=False)) for _ in range(mlp_shared_num_hidden)),
+                nn.ReLU(inplace=True),) for _ in range(mlp_shared_num_hidden)),
         )
         self.classifier = nn.Linear(mlp_shared_size, num_classes)
         if init_weights:
