@@ -14,25 +14,25 @@ class NormalizationEnum(Enum):
     NO_NORM = "no-norm"
     def __str__(self): return self.value
 
-def conv_norm_from_enum(size: int, norm_enum: NormalizationEnum, group_norm_groups: int = 8):
+def conv_norm_from_enum(size: int, norm_enum: NormalizationEnum, group_norm_groups: int = 16):
     if norm_enum == NormalizationEnum.BATCH_NORM:
-        return [nn.BatchNorm1d(size)]
+        return nn.BatchNorm1d(size)
     elif norm_enum == NormalizationEnum.GROUP_NORM:
-        return [nn.GroupNorm(num_groups=group_norm_groups, num_channels=size)]
+        return nn.GroupNorm(num_channels=size, num_groups=group_norm_groups)
     elif norm_enum == NormalizationEnum.INSTANCE_NORM:
-        return [nn.InstanceNorm1d(size)]
+        return nn.InstanceNorm1d(size)
     elif norm_enum == NormalizationEnum.NO_NORM:
-        return []
+        return nn.Identity()
     else:
         raise ValueError(f"Bad normalization for nn.Conv1d: {str(norm_enum)}")
 
 def linear_norm_from_enum(size: int, norm_enum: NormalizationEnum):
     if norm_enum == NormalizationEnum.BATCH_NORM:
-        return [nn.BatchNorm1d(size)]
+        return nn.BatchNorm1d(size)
     if norm_enum == NormalizationEnum.LAYER_NORM:
-        return [nn.LayerNorm(size)]
+        return nn.LayerNorm(size)
     elif norm_enum == NormalizationEnum.NO_NORM:
-        return []
+        return nn.Identity()
     else:
         raise ValueError(f"Bad normalization for nn.Linear: {str(norm_enum)}")
 
@@ -99,22 +99,22 @@ class Multimodal_CESNET(nn.Module):
             # Input: 30 * 3
             nn.Conv1d(self.ppi_input_channels, cnn_ppi_channels1, kernel_size=7, stride=1, groups=conv1d_groups, padding=3),
             nn.ReLU(inplace=False),
-            *conv_norm(cnn_ppi_channels1),
+            conv_norm(cnn_ppi_channels1),
 
             # 30 x channels1
             *(nn.Sequential(
                 nn.Conv1d(cnn_ppi_channels1, cnn_ppi_channels1, kernel_size=5, stride=1, groups=conv1d_groups, padding=2),
                 nn.ReLU(inplace=False),
-                *conv_norm(cnn_ppi_channels1),) for _ in range(cnn_ppi_num_blocks)),
+                conv_norm(cnn_ppi_channels1),) for _ in range(cnn_ppi_num_blocks)),
 
             # 30 x channels1
             nn.Conv1d(cnn_ppi_channels1, cnn_ppi_channels2, kernel_size=5, stride=1),
             nn.ReLU(inplace=False),
-            *conv_norm(cnn_ppi_channels2),
+            conv_norm(cnn_ppi_channels2),
             # 26 * channels2
             nn.Conv1d(cnn_ppi_channels2, cnn_ppi_channels2, kernel_size=5, stride=1),
             nn.ReLU(inplace=False),
-            *conv_norm(cnn_ppi_channels2),
+            conv_norm(cnn_ppi_channels2),
             # 22 * channels2
             nn.Conv1d(cnn_ppi_channels2, cnn_ppi_channels3, kernel_size=4, stride=2),
             nn.ReLU(inplace=False),
@@ -125,40 +125,40 @@ class Multimodal_CESNET(nn.Module):
             self.cnn_global_pooling = nn.Sequential(
                 GeM(kernel_size=CNN_PPI_OUTPUT_LEN),
                 nn.Flatten(),
-                *linear_norm(cnn_ppi_channels3),
+                linear_norm(cnn_ppi_channels3),
                 nn.Dropout(cnn_ppi_dropout_rate),
             )
         else:
             self.cnn_flatten_without_pooling = nn.Sequential(
                 nn.Flatten(),
-                *linear_norm(cnn_ppi_channels3 * CNN_PPI_OUTPUT_LEN),
+                linear_norm(cnn_ppi_channels3 * CNN_PPI_OUTPUT_LEN),
                 nn.Dropout(cnn_ppi_dropout_rate),
             )
         self.mlp_flowstats = nn.Sequential(
             nn.Linear(mlp_flowstats_input_size, mlp_flowstats_size1),
             nn.ReLU(inplace=False),
-            *linear_norm(mlp_flowstats_size1),
+            linear_norm(mlp_flowstats_size1),
 
             *(nn.Sequential(
                 nn.Linear(mlp_flowstats_size1, mlp_flowstats_size1),
                 nn.ReLU(inplace=False),
-                *linear_norm(mlp_flowstats_size1)) for _ in range(mlp_flowstats_num_hidden)),
+                linear_norm(mlp_flowstats_size1)) for _ in range(mlp_flowstats_num_hidden)),
 
             nn.Linear(mlp_flowstats_size1, mlp_flowstats_size2),
             nn.ReLU(inplace=False),
-            *linear_norm(mlp_flowstats_size2),
+            linear_norm(mlp_flowstats_size2),
             nn.Dropout(mlp_flowstats_dropout_rate),
         )
         self.mlp_shared = nn.Sequential(
             nn.Linear(mlp_shared_input_size, mlp_shared_size),
             nn.ReLU(inplace=False),
-            *linear_norm(mlp_shared_size),
+            linear_norm(mlp_shared_size),
             nn.Dropout(mlp_shared_dropout_rate),
 
             *(nn.Sequential(
                 nn.Linear(mlp_shared_size, mlp_shared_size),
                 nn.ReLU(inplace=False),
-                *linear_norm(mlp_shared_size),
+                linear_norm(mlp_shared_size),
                 nn.Dropout(mlp_shared_dropout_rate)) for _ in range(mlp_shared_num_hidden)),
         )
         self.classifier = nn.Linear(mlp_shared_size, num_classes)

@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 
 
-class ResBlock(nn.Module):
+class SimpleResBlock(nn.Module):
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
@@ -44,8 +44,8 @@ class CNN_ResBlock(nn.Module):
 
             self.conv1 = nn.Conv1d(ppi_input_channels, channels1, kernel_size=3, stride=1, padding=1)
             self.bn1 = nn.BatchNorm1d(channels1)
-            self.block1 = ResBlock(channels1, channels1)
-            self.block2 = ResBlock(channels1, channels2)
+            self.block1 = SimpleResBlock(channels1, channels1)
+            self.block2 = SimpleResBlock(channels1, channels2)
             self.classifier = nn.Linear(channels2, num_classes)
 
     def _forward_impl(self, ppi):
