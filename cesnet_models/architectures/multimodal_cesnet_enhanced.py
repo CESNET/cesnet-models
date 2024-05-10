@@ -15,6 +15,13 @@ class GlobalPoolEnum(Enum):
     AVG = "avg"
     def __str__(self): return self.value
 
+class StemType(Enum):
+    CONV = "conv"
+    EMBED = "embed"
+    EMBED_CONV = "embed-conv"
+    NONE = "none"
+    def __str__(self): return self.value
+
 def init_weights_fn(module: nn.Module):
     if isinstance(module, nn.Linear):
         nn.init.normal_(module.weight, mean=0.0, std=0.01)
@@ -177,7 +184,14 @@ class Bottleneck(nn.Module):
         out = self.act(out + shortcut)
         return out
 
-def build_cnn_ppi(channels: tuple[int, ...], strides: tuple[int, ...], kernel_sizes: tuple[int, ...], conv1_input_channels: int, conv, norm, dropout_rate_path: float = 0.0, downsample_avg=False, block_class=None):
+def build_cnn_ppi(channels: tuple[int, ...],
+                  strides: tuple[int, ...],
+                  kernel_sizes: tuple[int, ...],
+                  stem_output_channels: int,
+                  conv, norm,
+                  dropout_rate_path: float = 0.0,
+                  downsample_avg=False,
+                  block_class=None):
     assert len(channels) == len(strides) == len(kernel_sizes)
     if block_class is None:
         block_class = Bottleneck
@@ -185,7 +199,7 @@ def build_cnn_ppi(channels: tuple[int, ...], strides: tuple[int, ...], kernel_si
     blocks = []
     block_dprs = [x.item() for x in torch.linspace(0, dropout_rate_path, num_blocks)]
     for i in range(num_blocks):
-        in_channels = conv1_input_channels if i == 0 else channels[i - 1]
+        in_channels = stem_output_channels if i == 0 else channels[i - 1]
         if i == 0 and block_class == Bottleneck:
             kwargs = {"bottle_ratio": 0.5}
         else:
@@ -199,13 +213,60 @@ def build_cnn_ppi(channels: tuple[int, ...], strides: tuple[int, ...], kernel_si
                                   conv=conv,norm=norm, **kwargs))
     return nn.Sequential(*blocks)
 
+def build_cnn_ppi_stem(stem_type: StemType,
+                       ppi_input_channels :int,
+                       out_channels: int,
+                       kernel_size: int,
+                       packet_embedding_size: int,
+                       packet_embedding_include_dirs: bool,
+                       packet_embedding_init: bool,
+                       conv, norm):
+    stem = []
+    packet_embedding = None
+    stem_output_channels = ppi_input_channels
+    if stem_type == StemType.CONV:
+        stem = [
+            conv(ppi_input_channels, out_channels, kernel_size=kernel_size, stride=1),
+            norm(out_channels),
+            nn.ReLU(inplace=True),
+        ]
+        stem_output_channels = out_channels
+    if stem_type == StemType.EMBED or stem_type == StemType.EMBED_CONV:
+        num_embeddings = 1500 * (2 if packet_embedding_include_dirs else 1) + 1
+        packet_embedding = nn.Embedding(num_embeddings, packet_embedding_size, padding_idx=1500 if packet_embedding_include_dirs else 0)
+        if packet_embedding_init:
+            if packet_embedding_include_dirs:
+                for i, size in enumerate(range(-1500, 1501)):
+                    inital_embedding = torch.zeros(packet_embedding_size)
+                    if size != 0:
+                        inital_embedding[0] = 1 if size > 0 else 0
+                        inital_embedding[1] = 1 if size < 0 else 0
+                        inital_embedding[2] = abs(size) / 1500
+                    packet_embedding.weight.data[i, :] = inital_embedding
+            else:
+                for i, size in enumerate(range(0, 1501)):
+                    inital_embedding = torch.zeros(packet_embedding_size)
+                    inital_embedding[0] = size / 1500
+                    packet_embedding.weight.data[i, :] = inital_embedding
+        conv1_input_channels = packet_embedding_size + (1 if packet_embedding_include_dirs else 2)
+        if stem_type == StemType.EMBED_CONV:
+            stem = [
+                conv(conv1_input_channels, out_channels, kernel_size=kernel_size, stride=1),
+                norm(out_channels),
+                nn.ReLU(inplace=True),
+            ]
+            stem_output_channels = out_channels
+        else:
+            stem_output_channels = conv1_input_channels
+    return nn.Sequential(*stem) if len(stem) > 0 else nn.Identity(), packet_embedding, stem_output_channels
+
 class Multimodal_CESNET_Enhanced(nn.Module):
     def __init__(self, num_classes: int,
                        flowstats_input_size: int,
                        ppi_input_channels: int,
                        use_flowstats: bool = True,
                        init_weights: bool = True,
-                       packet_embedding_size: int = 6, packet_embedding_init: bool = False, packet_embedding_include_dirs: bool = False,
+                       cnn_ppi_stem_type: StemType = StemType.EMBED_CONV, packet_embedding_size: int = 7, packet_embedding_include_dirs: bool = True, packet_embedding_init: bool = True,
                        conv_normalization: NormalizationEnum = NormalizationEnum.GROUP_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.LAYER_NORM, group_norm_groups: int = 16,
                        cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 384), cnn_ppi_strides: tuple[int, ...] = (1, 1, 2, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 5, 5, 3),
                        cnn_ppi_use_stdconv: bool = True, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout_rate: float = 0.0,
@@ -218,36 +279,25 @@ class Multimodal_CESNET_Enhanced(nn.Module):
         self.num_classes = num_classes
         self.flowstats_input_size = flowstats_input_size
         self.use_flowstats = use_flowstats
-        self.packet_embedding_size = packet_embedding_size
         self.packet_embedding_include_dirs = packet_embedding_include_dirs
         self.mlp_shared_size = mlp_shared_size
         mlp_shared_input_size = cnn_ppi_channels[-1] + mlp_flowstats_size2 if use_flowstats else cnn_ppi_channels[-1]
-
         conv = StdConv1d if cnn_ppi_use_stdconv else partial(nn.Conv1d, bias=False)
         conv_norm = partial(conv_norm_from_enum, norm_enum=conv_normalization, group_norm_groups=group_norm_groups)
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
-        if self.packet_embedding_size > 0:
-            num_embeddings = 1500 * (2 if packet_embedding_include_dirs else 1) + 1
-            self.packet_sizes_embedding = nn.Embedding(num_embeddings, packet_embedding_size, padding_idx=1500 if packet_embedding_include_dirs else 0)
-            if packet_embedding_init:
-                if packet_embedding_include_dirs:
-                    for i, size in enumerate(range(-1500, 1501)):
-                        inital_embedding = torch.zeros(packet_embedding_size)
-                        if size != 0:
-                            inital_embedding[0] = -1 if size < 0 else 1
-                            inital_embedding[1] = abs(size) / 1500
-                        self.packet_sizes_embedding.weight.data[i, :] = inital_embedding
-                else:
-                    for i, size in enumerate(range(0, 1501)):
-                        inital_embedding = torch.zeros(packet_embedding_size)
-                        inital_embedding[0] = size / 1500
-                        self.packet_sizes_embedding.weight.data[i, :] = inital_embedding
-
-        conv1_input_channels = ppi_input_channels if packet_embedding_size == 0 else packet_embedding_size + (1 if packet_embedding_include_dirs else 2)
+        self.cnn_ppi_stem_type = cnn_ppi_stem_type
+        self.cnn_ppi_stem, self.packet_embedding, stem_output_channels = build_cnn_ppi_stem(stem_type=cnn_ppi_stem_type,
+                                                                                                  ppi_input_channels=ppi_input_channels,
+                                                                                                  out_channels=cnn_ppi_channels[0] // 2,
+                                                                                                  kernel_size=7,
+                                                                                                  packet_embedding_size=packet_embedding_size,
+                                                                                                  packet_embedding_include_dirs=packet_embedding_include_dirs,
+                                                                                                  packet_embedding_init=packet_embedding_init,
+                                                                                                  conv=conv, norm=conv_norm)
         self.cnn_ppi = build_cnn_ppi(channels=cnn_ppi_channels,
                                      strides=cnn_ppi_strides,
                                      kernel_sizes=cnn_ppi_kernel_sizes,
-                                     conv1_input_channels=conv1_input_channels,
+                                     stem_output_channels=stem_output_channels,
                                      dropout_rate_path=cnn_ppi_blocks_dropout_rate,
                                      downsample_avg=cnn_ppi_downsample_avg,
                                      conv=conv, norm=conv_norm)
@@ -288,34 +338,38 @@ class Multimodal_CESNET_Enhanced(nn.Module):
         if init_weights:
             self.apply(init_weights_fn)
 
-    def _forward_impl(self, ppi, flowstats):
-        if self.packet_embedding_size > 0:
+    def forward_features(self, ppi, flowstats):
+        if self.cnn_ppi_stem_type == StemType.EMBED or self.cnn_ppi_stem_type == StemType.EMBED_CONV:
+            assert self.packet_embedding is not None
             if self.packet_embedding_include_dirs:
                 embedding_input = (ppi[:, PPI_SIZE_POS, :] * ppi[:, PPI_DIR_POS, :]).int() + 1500
                 ppi_embedded = torch.cat((
                     ppi[:, PPI_IPT_POS, :].unsqueeze(-1),
-                    self.packet_sizes_embedding(embedding_input)
+                    self.packet_embedding(embedding_input)
                 ), dim=2).transpose(1, 2)
             else:
                 embedding_input = ppi[:, PPI_SIZE_POS, :].int()
                 ppi_embedded = torch.cat((
                     ppi[:, PPI_IPT_POS, :].unsqueeze(-1),
                     ppi[:, PPI_DIR_POS, :].unsqueeze(-1),
-                    self.packet_sizes_embedding(embedding_input)
+                    self.packet_embedding(embedding_input)
                 ), dim=2).transpose(1, 2)
         else:
             ppi_embedded = ppi
-        out = self.cnn_ppi(ppi_embedded)
+        out = self.cnn_ppi_stem(ppi_embedded)
+        out = self.cnn_ppi(out)
         out = self.cnn_global_pooling(out)
         if self.use_flowstats:
             out_flowstats = self.mlp_flowstats(flowstats)
             out = torch.column_stack([out, out_flowstats])
         out = self.mlp_shared(out)
-        logits = self.classifier(out)
-        return logits
+        return out
 
-    def forward(self, *x: tuple) -> Tensor:
-        if len(x) == 1:
-            x = x[0]
+    def forward_head(self, x):
+        return self.classifier(x)
+
+    def forward(self, x: tuple) -> Tensor:
         ppi, flowstats = x
-        return self._forward_impl(ppi=ppi, flowstats=flowstats)
+        out =  self.forward_features(ppi=ppi, flowstats=flowstats)
+        out = self.forward_head(out)
+        return out
