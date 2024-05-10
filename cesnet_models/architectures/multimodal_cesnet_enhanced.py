@@ -368,8 +368,10 @@ class Multimodal_CESNET_Enhanced(nn.Module):
     def forward_head(self, x):
         return self.classifier(x)
 
-    def forward(self, x: tuple) -> Tensor:
+    def forward(self, *x: tuple) -> Tensor:
+        if len(x) == 1:
+            x = x[0]
         ppi, flowstats = x
-        out =  self.forward_features(ppi=ppi, flowstats=flowstats)
+        out = self.forward_features(ppi=ppi, flowstats=flowstats)
         out = self.forward_head(out)
         return out

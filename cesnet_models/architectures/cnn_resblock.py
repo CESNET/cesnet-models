@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import Tensor, nn
 
 
 class SimpleResBlock(nn.Module):
@@ -48,16 +48,22 @@ class CNN_ResBlock(nn.Module):
             self.block2 = SimpleResBlock(channels1, channels2)
             self.classifier = nn.Linear(channels2, num_classes)
 
-    def _forward_impl(self, ppi):
+    def forward_features(self, ppi, flowstats):
         out = self.conv1(ppi)
         out = self.bn1(out)
         out = self.block1(out)
         out = self.block2(out)
         out = F.adaptive_avg_pool1d(out, 1)
         out = torch.flatten(out, 1)
-        x = self.classifier(out)
-        return x
+        return out
 
-    def forward(self, x):
+    def forward_head(self, x):
+        return self.classifier(x)
+
+    def forward(self, *x: tuple) -> Tensor:
+        if len(x) == 1:
+            x = x[0]
         ppi, flowstats = x
-        return self._forward_impl(ppi=ppi)
+        out = self.forward_features(ppi, flowstats)
+        out = self.forward_head(out)
+        return out

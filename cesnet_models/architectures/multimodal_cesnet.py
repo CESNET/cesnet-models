@@ -163,7 +163,7 @@ class Multimodal_CESNET(nn.Module):
         )
         self.classifier = nn.Linear(mlp_shared_size, num_classes)
 
-    def _forward_impl(self, ppi, flowstats):
+    def forward_features(self, ppi, flowstats):
         out = self.cnn_ppi(ppi)
         if self.cnn_ppi_use_pooling:
             out = self.cnn_global_pooling(out)
@@ -177,11 +177,15 @@ class Multimodal_CESNET(nn.Module):
             out_flowstats = self.mlp_flowstats(flowstats_input)
             out = torch.column_stack([out, out_flowstats])
         out = self.mlp_shared(out)
-        logits = self.classifier(out)
-        return logits
+        return out
+
+    def forward_head(self, x):
+        return self.classifier(x)
 
     def forward(self, *x: tuple) -> Tensor:
         if len(x) == 1:
             x = x[0]
         ppi, flowstats = x
-        return self._forward_impl(ppi=ppi, flowstats=flowstats)
+        out = self.forward_features(ppi=ppi, flowstats=flowstats)
+        out = self.forward_head(out)
+        return out
