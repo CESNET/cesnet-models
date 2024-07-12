@@ -757,19 +757,19 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
     <span class="n">v2_model_configuration</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;conv_normalization&quot;</span><span class="p">:</span> <span class="n">NormalizationEnum</span><span class="o">.</span><span class="n">BATCH_NORM</span><span class="p">,</span>
         <span class="s2">&quot;linear_normalization&quot;</span><span class="p">:</span> <span class="n">NormalizationEnum</span><span class="o">.</span><span class="n">BATCH_NORM</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_num_hidden&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_channels1&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_channels2&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_channels3&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_use_pooling&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
-        <span class="s2">&quot;flowstats_num_hidden&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-        <span class="s2">&quot;flowstats_size&quot;</span><span class="p">:</span> <span class="mi">225</span><span class="p">,</span>
-        <span class="s2">&quot;flowstats_out_size&quot;</span><span class="p">:</span> <span class="mi">225</span><span class="p">,</span>
-        <span class="s2">&quot;flowstats_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
-        <span class="s2">&quot;latent_num_hidden&quot;</span><span class="p">:</span>  <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">&quot;latent_size&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">,</span>
-        <span class="s2">&quot;latent_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_num_blocks&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_channels1&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_channels2&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_channels3&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_use_pooling&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_flowstats_num_hidden&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_flowstats_size1&quot;</span><span class="p">:</span> <span class="mi">225</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_flowstats_size2&quot;</span><span class="p">:</span> <span class="mi">225</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_flowstats_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_shared_num_hidden&quot;</span><span class="p">:</span>  <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_shared_size&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_shared_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
     <span class="p">}</span>
     <span class="k">return</span> <span class="n">_multimodal_cesnet</span><span class="p">(</span><span class="n">model_configuration</span><span class="o">=</span><span class="n">v2_model_configuration</span><span class="p">,</span>
                               <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
@@ -952,19 +952,19 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
     <span class="n">v1_model_configuration</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;conv_normalization&quot;</span><span class="p">:</span> <span class="n">NormalizationEnum</span><span class="o">.</span><span class="n">BATCH_NORM</span><span class="p">,</span>
         <span class="s2">&quot;linear_normalization&quot;</span><span class="p">:</span> <span class="n">NormalizationEnum</span><span class="o">.</span><span class="n">BATCH_NORM</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_num_hidden&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_channels1&quot;</span><span class="p">:</span> <span class="mi">72</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_channels2&quot;</span><span class="p">:</span> <span class="mi">128</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_channels3&quot;</span><span class="p">:</span> <span class="mi">128</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_use_pooling&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="s2">&quot;cnn_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
-        <span class="s2">&quot;flowstats_num_hidden&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-        <span class="s2">&quot;flowstats_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
-        <span class="s2">&quot;flowstats_out_size&quot;</span><span class="p">:</span> <span class="mi">32</span><span class="p">,</span>
-        <span class="s2">&quot;flowstats_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
-        <span class="s2">&quot;latent_num_hidden&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-        <span class="s2">&quot;latent_size&quot;</span><span class="p">:</span> <span class="mi">480</span><span class="p">,</span>
-        <span class="s2">&quot;latent_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_num_blocks&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_channels1&quot;</span><span class="p">:</span> <span class="mi">72</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_channels2&quot;</span><span class="p">:</span> <span class="mi">128</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_channels3&quot;</span><span class="p">:</span> <span class="mi">128</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_use_pooling&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;cnn_ppi_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_flowstats_num_hidden&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_flowstats_size1&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_flowstats_size2&quot;</span><span class="p">:</span> <span class="mi">32</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_flowstats_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_shared_num_hidden&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_shared_size&quot;</span><span class="p">:</span> <span class="mi">480</span><span class="p">,</span>
+        <span class="s2">&quot;mlp_shared_dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
     <span class="p">}</span>
     <span class="k">return</span> <span class="n">_multimodal_cesnet</span><span class="p">(</span><span class="n">model_configuration</span><span class="o">=</span><span class="n">v1_model_configuration</span><span class="p">,</span>
                               <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
