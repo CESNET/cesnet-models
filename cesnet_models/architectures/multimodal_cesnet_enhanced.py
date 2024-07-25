@@ -63,6 +63,24 @@ class StdConv1d(nn.Conv1d):
             training=True, momentum=0., eps=self.eps).reshape_as(self.weight)
         x = F.conv1d(x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
         return x
+    
+class PadConv1d(nn.Conv1d):
+    """Conv1d with automatic padding calculation.
+    """
+
+    def __init__(
+            self, in_channel, out_channels, kernel_size, stride=1, padding=None,
+            dilation=1, groups=1, bias=False, eps=1e-6):
+        if padding is None:
+            padding = get_padding(kernel_size, stride, dilation)
+        super().__init__(
+            in_channel, out_channels, kernel_size, stride=stride,
+            padding=padding, dilation=dilation, groups=groups, bias=bias)
+        self.eps = eps
+
+    def forward(self, x):
+        x = F.conv1d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        return x
 
 class BasicBlock(nn.Module):
     def __init__(
@@ -282,7 +300,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
         self.packet_embedding_include_dirs = packet_embedding_include_dirs
         self.mlp_shared_size = mlp_shared_size
         mlp_shared_input_size = cnn_ppi_channels[-1] + mlp_flowstats_size2 if use_flowstats else cnn_ppi_channels[-1]
-        conv = StdConv1d if cnn_ppi_use_stdconv else partial(nn.Conv1d, bias=False)
+        conv = StdConv1d if cnn_ppi_use_stdconv else PadConv1d
         conv_norm = partial(conv_norm_from_enum, norm_enum=conv_normalization, group_norm_groups=group_norm_groups)
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
         self.cnn_ppi_stem_type = cnn_ppi_stem_type
