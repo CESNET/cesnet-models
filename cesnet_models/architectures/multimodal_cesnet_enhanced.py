@@ -325,7 +325,6 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             nn.AdaptiveAvgPool1d(output_size=1) if cnn_ppi_global_pool == GlobalPoolEnum.AVG else nn.AdaptiveMaxPool1d(output_size=1),
             nn.Flatten(),
             nn.Dropout(cnn_ppi_dropout_rate) if cnn_ppi_dropout_rate > 0 else nn.Identity(),
-            nn.ReLU(inplace=True),
         )
         if self.use_mlp_flowstats:
             self.mlp_flowstats = nn.Sequential(
@@ -347,8 +346,8 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             self.mlp_shared = nn.Sequential(
                 nn.Linear(mlp_shared_input_size, mlp_shared_size),
                 linear_norm(mlp_shared_size),
-                nn.ReLU(inplace=True),
                 nn.Dropout(mlp_shared_dropout_rate) if mlp_shared_dropout_rate > 0 else nn.Identity(),
+                nn.ReLU(inplace=True),
             )
         self.classifier = nn.Linear(self.num_features, num_classes)
         if init_weights:
