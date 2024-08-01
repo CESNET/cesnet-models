@@ -63,7 +63,7 @@ class StdConv1d(nn.Conv1d):
             training=True, momentum=0., eps=self.eps).reshape_as(self.weight)
         x = F.conv1d(x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
         return x
-    
+
 class PadConv1d(nn.Conv1d):
     """Conv1d with automatic padding calculation.
     """
@@ -280,26 +280,28 @@ def build_cnn_ppi_stem(stem_type: StemType,
 
 class Multimodal_CESNET_Enhanced(nn.Module):
     def __init__(self, num_classes: int,
-                       flowstats_input_size: int,
-                       ppi_input_channels: int,
-                       use_flowstats: bool = True,
+                       flowstats_input_size: int = 0, ppi_input_channels: int = 3,
                        init_weights: bool = True,
-                       cnn_ppi_stem_type: StemType = StemType.EMBED_CONV, packet_embedding_size: int = 7, packet_embedding_include_dirs: bool = True, packet_embedding_init: bool = True,
+                       cnn_ppi_stem_type: StemType = StemType.EMBED, packet_embedding_size: int = 7, packet_embedding_include_dirs: bool = True, packet_embedding_init: bool = True,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
                        cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 384), cnn_ppi_strides: tuple[int, ...] = (1, 1, 2, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 5, 5, 3),
                        cnn_ppi_use_stdconv: bool = True, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout_rate: float = 0.0,
                        cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.AVG, cnn_ppi_dropout_rate: float = 0.0,
-                       mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout_rate: float = 0.0,
-                       mlp_shared_size: int = 512, mlp_shared_dropout_rate: float = 0.0,
+                       use_mlp_flowstats: bool = True, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout_rate: float = 0.0,
+                       use_mlp_shared: bool = True, mlp_shared_size: int = 512, mlp_shared_dropout_rate: float = 0.0,
                        ):
         super().__init__()
-        assert ppi_input_channels == 3
+        if ppi_input_channels != 3:
+            raise ValueError("ppi_input_channels must be 3 for now")
+        if use_mlp_flowstats and flowstats_input_size == 0:
+            raise ValueError("flowstats_input_size must be set when use_mlp_flowstats is used")
+
         self.num_classes = num_classes
-        self.flowstats_input_size = flowstats_input_size
-        self.use_flowstats = use_flowstats
+        self.use_mlp_flowstats = use_mlp_flowstats
+        self.use_mlp_shared = use_mlp_shared
+        mlp_shared_input_size = cnn_ppi_channels[-1] + mlp_flowstats_size2 if use_mlp_flowstats else cnn_ppi_channels[-1]
+        self.num_features = mlp_shared_size if self.use_mlp_shared else mlp_shared_input_size
         self.packet_embedding_include_dirs = packet_embedding_include_dirs
-        self.mlp_shared_size = mlp_shared_size
-        mlp_shared_input_size = cnn_ppi_channels[-1] + mlp_flowstats_size2 if use_flowstats else cnn_ppi_channels[-1]
         conv = StdConv1d if cnn_ppi_use_stdconv else PadConv1d
         conv_norm = partial(conv_norm_from_enum, norm_enum=conv_normalization, group_norm_groups=group_norm_groups)
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
@@ -325,28 +327,30 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             nn.Dropout(cnn_ppi_dropout_rate) if cnn_ppi_dropout_rate > 0 else nn.Identity(),
             nn.ReLU(inplace=True),
         )
-        self.mlp_flowstats = nn.Sequential(
-            nn.Linear(flowstats_input_size, mlp_flowstats_size1),
-            linear_norm(mlp_flowstats_size1),
-            nn.ReLU(inplace=True),
-
-            *(nn.Sequential(
-                nn.Linear(mlp_flowstats_size1, mlp_flowstats_size1),
+        if self.use_mlp_flowstats:
+            self.mlp_flowstats = nn.Sequential(
+                nn.Linear(flowstats_input_size, mlp_flowstats_size1),
                 linear_norm(mlp_flowstats_size1),
-                nn.ReLU(inplace=True),) for _ in range(mlp_flowstats_num_hidden)),
+                nn.ReLU(inplace=True),
 
-            nn.Linear(mlp_flowstats_size1, mlp_flowstats_size2),
-            linear_norm(mlp_flowstats_size2),
-            nn.Dropout(mlp_flowstats_dropout_rate) if mlp_flowstats_dropout_rate > 0 else nn.Identity(),
-            nn.ReLU(inplace=True),
-        )
-        self.mlp_shared = nn.Sequential(
-            nn.Linear(mlp_shared_input_size, mlp_shared_size),
-            linear_norm(mlp_shared_size),
-            nn.ReLU(inplace=True),
-            nn.Dropout(mlp_shared_dropout_rate) if mlp_shared_dropout_rate > 0 else nn.Identity(),
-        )
-        self.classifier = nn.Linear(self.mlp_shared_size, num_classes)
+                *(nn.Sequential(
+                    nn.Linear(mlp_flowstats_size1, mlp_flowstats_size1),
+                    linear_norm(mlp_flowstats_size1),
+                    nn.ReLU(inplace=True),) for _ in range(mlp_flowstats_num_hidden)),
+
+                nn.Linear(mlp_flowstats_size1, mlp_flowstats_size2),
+                linear_norm(mlp_flowstats_size2),
+                nn.Dropout(mlp_flowstats_dropout_rate) if mlp_flowstats_dropout_rate > 0 else nn.Identity(),
+                nn.ReLU(inplace=True),
+            )
+        if self.use_mlp_shared:
+            self.mlp_shared = nn.Sequential(
+                nn.Linear(mlp_shared_input_size, mlp_shared_size),
+                linear_norm(mlp_shared_size),
+                nn.ReLU(inplace=True),
+                nn.Dropout(mlp_shared_dropout_rate) if mlp_shared_dropout_rate > 0 else nn.Identity(),
+            )
+        self.classifier = nn.Linear(self.num_features, num_classes)
         if init_weights:
             self.apply(init_weights_fn)
 
@@ -371,10 +375,11 @@ class Multimodal_CESNET_Enhanced(nn.Module):
         out = self.cnn_ppi_stem(ppi_embedded)
         out = self.cnn_ppi(out)
         out = self.cnn_global_pooling(out)
-        if self.use_flowstats:
+        if self.use_mlp_flowstats:
             out_flowstats = self.mlp_flowstats(flowstats)
             out = torch.column_stack([out, out_flowstats])
-        out = self.mlp_shared(out)
+        if self.use_mlp_shared:
+            out = self.mlp_shared(out)
         return out
 
     def forward_head(self, x):

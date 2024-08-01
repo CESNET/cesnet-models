@@ -61,23 +61,22 @@ class Multimodal_CESNET(nn.Module):
     def __init__(self, num_classes: int,
                        flowstats_input_size: int,
                        ppi_input_channels: int,
-                       use_flowstats: bool = True, add_ppi_to_mlp_flowstats: bool = False,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM,
                        cnn_ppi_channels1: int = 200, cnn_ppi_channels2: int = 300, cnn_ppi_channels3: int = 300, cnn_ppi_num_blocks: int = 3, cnn_ppi_depthwise: bool = False,
                        cnn_ppi_use_pooling: bool = True, cnn_ppi_dropout_rate: float = 0.1,
-                       mlp_flowstats_size1: int = 225, mlp_flowstats_size2: int = 225, mlp_flowstats_num_hidden: int = 2, mlp_flowstats_dropout_rate: float = 0.1,
+                       use_mlp_flowstats: bool = True, mlp_flowstats_size1: int = 225, mlp_flowstats_size2: int = 225, mlp_flowstats_num_hidden: int = 2, mlp_flowstats_dropout_rate: float = 0.1, add_ppi_to_mlp_flowstats: bool = False,
                        mlp_shared_size: int = 600, mlp_shared_num_hidden: int = 0, mlp_shared_dropout_rate: float = 0.2,
                        ):
         super().__init__()
-        if add_ppi_to_mlp_flowstats and not use_flowstats:
-            raise ValueError("add_ppi_to_mlp_flowstats requires use_flowstats")
+        if add_ppi_to_mlp_flowstats and not use_mlp_flowstats:
+            raise ValueError("add_ppi_to_mlp_flowstats requires use_mlp_flowstats")
         if cnn_ppi_depthwise and cnn_ppi_channels1 % ppi_input_channels != 0:
             raise ValueError(f"cnn_ppi_channels1 ({cnn_ppi_channels1}) must be divisible by ppi_input_channels ({ppi_input_channels}) when using cnn_ppi_depthwise")
 
         self.num_classes = num_classes
         self.flowstats_input_size = flowstats_input_size
         self.ppi_input_channels = ppi_input_channels
-        self.use_flowstats = use_flowstats
+        self.use_mlp_flowstats = use_mlp_flowstats
         self.add_ppi_to_mlp_flowstats = add_ppi_to_mlp_flowstats
         self.mlp_shared_size = mlp_shared_size
         self.cnn_ppi_use_pooling = cnn_ppi_use_pooling
@@ -88,7 +87,7 @@ class Multimodal_CESNET(nn.Module):
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
         conv1d_groups = ppi_input_channels if cnn_ppi_depthwise else 1
         mlp_flowstats_input_size = flowstats_input_size + (ppi_input_channels * PPI_LEN) if add_ppi_to_mlp_flowstats else flowstats_input_size
-        mlp_shared_input_size = mlp_flowstats_size2 if use_flowstats else 0
+        mlp_shared_input_size = mlp_flowstats_size2 if use_mlp_flowstats else 0
         if cnn_ppi_use_pooling:
             mlp_shared_input_size += cnn_ppi_channels3
         else:
@@ -169,7 +168,7 @@ class Multimodal_CESNET(nn.Module):
             out = self.cnn_global_pooling(out)
         else:
             out = self.cnn_flatten_without_pooling(out)
-        if self.use_flowstats:
+        if self.use_mlp_flowstats:
             if self.add_ppi_to_mlp_flowstats:
                 flowstats_input = torch.column_stack([torch.flatten(ppi, 1), flowstats])
             else:
