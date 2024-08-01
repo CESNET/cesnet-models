@@ -285,10 +285,10 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                        cnn_ppi_stem_type: StemType = StemType.EMBED, packet_embedding_size: int = 7, packet_embedding_include_dirs: bool = True, packet_embedding_init: bool = True,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
                        cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 384), cnn_ppi_strides: tuple[int, ...] = (1, 1, 2, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 5, 5, 3),
-                       cnn_ppi_use_stdconv: bool = True, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout_rate: float = 0.0,
-                       cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.AVG, cnn_ppi_dropout_rate: float = 0.0,
-                       use_mlp_flowstats: bool = True, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout_rate: float = 0.0,
-                       use_mlp_shared: bool = True, mlp_shared_size: int = 512, mlp_shared_dropout_rate: float = 0.0,
+                       cnn_ppi_use_stdconv: bool = True, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.0,
+                       cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.AVG, cnn_ppi_global_pool_act: bool = True, cnn_ppi_global_pool_dropout: float = 0.0,
+                       use_mlp_flowstats: bool = True, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout: float = 0.0,
+                       use_mlp_shared: bool = True, mlp_shared_size: int = 512, mlp_shared_dropout: float = 0.0,
                        ):
         super().__init__()
         if ppi_input_channels != 3:
@@ -318,13 +318,14 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                                      strides=cnn_ppi_strides,
                                      kernel_sizes=cnn_ppi_kernel_sizes,
                                      stem_output_channels=stem_output_channels,
-                                     dropout_rate_path=cnn_ppi_blocks_dropout_rate,
+                                     dropout_rate_path=cnn_ppi_blocks_dropout,
                                      downsample_avg=cnn_ppi_downsample_avg,
                                      conv=conv, norm=conv_norm)
         self.cnn_global_pooling = nn.Sequential(
             nn.AdaptiveAvgPool1d(output_size=1) if cnn_ppi_global_pool == GlobalPoolEnum.AVG else nn.AdaptiveMaxPool1d(output_size=1),
             nn.Flatten(),
-            nn.Dropout(cnn_ppi_dropout_rate) if cnn_ppi_dropout_rate > 0 else nn.Identity(),
+            nn.Dropout(cnn_ppi_global_pool_dropout) if cnn_ppi_global_pool_dropout > 0 else nn.Identity(),
+            nn.ReLU(inplace=True) if cnn_ppi_global_pool_act else nn.Identity(),
         )
         if self.use_mlp_flowstats:
             self.mlp_flowstats = nn.Sequential(
@@ -339,14 +340,14 @@ class Multimodal_CESNET_Enhanced(nn.Module):
 
                 nn.Linear(mlp_flowstats_size1, mlp_flowstats_size2),
                 linear_norm(mlp_flowstats_size2),
-                nn.Dropout(mlp_flowstats_dropout_rate) if mlp_flowstats_dropout_rate > 0 else nn.Identity(),
+                nn.Dropout(mlp_flowstats_dropout) if mlp_flowstats_dropout > 0 else nn.Identity(),
                 nn.ReLU(inplace=True),
             )
         if self.use_mlp_shared:
             self.mlp_shared = nn.Sequential(
                 nn.Linear(mlp_shared_input_size, mlp_shared_size),
                 linear_norm(mlp_shared_size),
-                nn.Dropout(mlp_shared_dropout_rate) if mlp_shared_dropout_rate > 0 else nn.Identity(),
+                nn.Dropout(mlp_shared_dropout) if mlp_shared_dropout > 0 else nn.Identity(),
                 nn.ReLU(inplace=True),
             )
         self.classifier = nn.Linear(self.num_features, num_classes)
