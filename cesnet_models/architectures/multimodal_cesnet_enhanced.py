@@ -237,6 +237,7 @@ def build_cnn_ppi_stem(stem_type: StemType,
                        kernel_size: int,
                        packet_embedding_size: int,
                        packet_embedding_include_dirs: bool,
+                       packet_embedding_onehot_dirs: bool,
                        packet_embedding_init: bool,
                        conv, norm):
     stem = []
@@ -266,7 +267,7 @@ def build_cnn_ppi_stem(stem_type: StemType,
                     inital_embedding = torch.zeros(packet_embedding_size)
                     inital_embedding[0] = size / 1500
                     packet_embedding.weight.data[i, :] = inital_embedding
-        conv1_input_channels = packet_embedding_size + (1 if packet_embedding_include_dirs else 2)
+        conv1_input_channels = packet_embedding_size + (1 if packet_embedding_include_dirs else 3 if packet_embedding_onehot_dirs else 2)
         if stem_type == StemType.EMBED_CONV:
             stem = [
                 conv(conv1_input_channels, out_channels, kernel_size=kernel_size, stride=1),
@@ -282,7 +283,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
     def __init__(self, num_classes: int,
                        flowstats_input_size: int = 0, ppi_input_channels: int = 3,
                        init_weights: bool = True,
-                       cnn_ppi_stem_type: StemType = StemType.EMBED, packet_embedding_size: int = 7, packet_embedding_include_dirs: bool = True, packet_embedding_init: bool = True,
+                       cnn_ppi_stem_type: StemType = StemType.EMBED, packet_embedding_size: int = 7, packet_embedding_include_dirs: bool = True, packet_embedding_init: bool = True, packet_embedding_onehot_dirs: bool = False,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
                        cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 384), cnn_ppi_strides: tuple[int, ...] = (1, 1, 2, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 5, 5, 3),
                        cnn_ppi_use_stdconv: bool = True, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.0,
@@ -295,6 +296,8 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             raise ValueError("ppi_input_channels must be 3 for now")
         if use_mlp_flowstats and flowstats_input_size == 0:
             raise ValueError("flowstats_input_size must be set when use_mlp_flowstats is used")
+        if packet_embedding_include_dirs and packet_embedding_onehot_dirs:
+            raise ValueError("packet_embedding_include_dirs and packet_embedding_onehot_dirs cannot be used together")
 
         self.num_classes = num_classes
         self.use_mlp_flowstats = use_mlp_flowstats
@@ -302,6 +305,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
         mlp_shared_input_size = cnn_ppi_channels[-1] + mlp_flowstats_size2 if use_mlp_flowstats else cnn_ppi_channels[-1]
         self.num_features = mlp_shared_size if self.use_mlp_shared else mlp_shared_input_size
         self.packet_embedding_include_dirs = packet_embedding_include_dirs
+        self.packet_embedding_onehot_dirs = packet_embedding_onehot_dirs
         conv = StdConv1d if cnn_ppi_use_stdconv else PadConv1d
         conv_norm = partial(conv_norm_from_enum, norm_enum=conv_normalization, group_norm_groups=group_norm_groups)
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
@@ -312,6 +316,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                                                                                                   kernel_size=7,
                                                                                                   packet_embedding_size=packet_embedding_size,
                                                                                                   packet_embedding_include_dirs=packet_embedding_include_dirs,
+                                                                                                  packet_embedding_onehot_dirs=packet_embedding_onehot_dirs,
                                                                                                   packet_embedding_init=packet_embedding_init,
                                                                                                   conv=conv, norm=conv_norm)
         self.cnn_ppi = build_cnn_ppi(channels=cnn_ppi_channels,
@@ -365,11 +370,19 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                 ), dim=2).transpose(1, 2)
             else:
                 embedding_input = ppi[:, PPI_SIZE_POS, :].int()
-                ppi_embedded = torch.cat((
-                    ppi[:, PPI_IPT_POS, :].unsqueeze(-1),
-                    ppi[:, PPI_DIR_POS, :].unsqueeze(-1),
-                    self.packet_embedding(embedding_input)
-                ), dim=2).transpose(1, 2)
+                if self.packet_embedding_onehot_dirs:
+                    ppi_embedded = torch.cat((
+                        ppi[:, PPI_IPT_POS, :].unsqueeze(-1),
+                        (ppi[:, PPI_DIR_POS, :] > 0).int().unsqueeze(-1),
+                        (ppi[:, PPI_DIR_POS, :] < 0).int().unsqueeze(-1),
+                        self.packet_embedding(embedding_input)
+                    ), dim=2).transpose(1, 2)
+                else:
+                    ppi_embedded = torch.cat((
+                        ppi[:, PPI_IPT_POS, :].unsqueeze(-1),
+                        ppi[:, PPI_DIR_POS, :].unsqueeze(-1),
+                        self.packet_embedding(embedding_input)
+                    ), dim=2).transpose(1, 2)
         else:
             ppi_embedded = ppi
         out = self.cnn_ppi_stem(ppi_embedded)
