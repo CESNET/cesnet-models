@@ -23,16 +23,15 @@ class StemType(Enum):
     def __str__(self): return self.value
 
 def init_weights_fn(module: nn.Module):
+    # Changed to zero init for bias, TODO experiment with .weight
     if isinstance(module, nn.Linear):
-        nn.init.normal_(module.weight, mean=0.0, std=0.01)
-        nn.init.zeros_(module.bias)
-    elif isinstance(module, nn.Conv1d):
-        nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
+        # nn.init.normal_(module.weight, mean=0.0, std=0.01)
         if module.bias is not None:
             nn.init.zeros_(module.bias)
-    elif isinstance(module, (nn.BatchNorm1d, nn.LayerNorm, nn.GroupNorm)):
-        nn.init.ones_(module.weight)
-        nn.init.zeros_(module.bias)
+    elif isinstance(module, nn.Conv1d):
+        # nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
+        if module.bias is not None:
+            nn.init.zeros_(module.bias)
 
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1) -> int:
     # Calculate symmetric padding for a convolution
