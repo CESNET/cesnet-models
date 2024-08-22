@@ -279,8 +279,7 @@ def build_cnn_ppi_stem(stem_type: StemType,
     return nn.Sequential(*stem) if len(stem) > 0 else nn.Identity(), packet_embedding, stem_output_channels
 
 class Multimodal_CESNET_Enhanced(nn.Module):
-    def __init__(self, num_classes: int,
-                       flowstats_input_size: int = 0, ppi_input_channels: int = 3,
+    def __init__(self, num_classes: int = 0, flowstats_input_size: int = 0, ppi_input_channels: int = 3,
                        init_weights: bool = True,
                        cnn_ppi_stem_type: StemType = StemType.EMBED, packet_embedding_size: int = 7, packet_embedding_include_dirs: bool = True, packet_embedding_init: bool = True, packet_embedding_onehot_dirs: bool = False,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
@@ -354,7 +353,10 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                 nn.Dropout(mlp_shared_dropout) if mlp_shared_dropout > 0 else nn.Identity(),
                 nn.ReLU(inplace=True),
             )
-        self.classifier = nn.Linear(self.num_features, num_classes)
+        if self.num_classes > 0:
+            self.classifier = nn.Linear(self.num_features, num_classes)
+        else:
+            self.classifier = nn.Identity()
         if init_weights:
             self.apply(init_weights_fn)
 
