@@ -283,13 +283,13 @@ def build_cnn_ppi_stem(stem_type: StemType,
 class Multimodal_CESNET_Enhanced(nn.Module):
     def __init__(self, num_classes: int = 0, flowstats_input_size: int = 0, ppi_input_channels: int = 3,
                        init_weights: bool = True, cnn_ppi_stem_type: StemType = StemType.EMBED,
-                       packet_embedding_size: int = 7, packet_embedding_include_dirs: bool = True, packet_embedding_onehot_dirs: bool = False,  packet_embedding_init: bool = True, packet_embedding_no_ipt: bool = False,
+                       packet_embedding_size: int = 11, packet_embedding_include_dirs: bool = False, packet_embedding_onehot_dirs: bool = True,  packet_embedding_init: bool = True, packet_embedding_no_ipt: bool = False,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
-                       cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 384), cnn_ppi_strides: tuple[int, ...] = (1, 1, 2, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 5, 5, 3),
-                       cnn_ppi_use_stdconv: bool = True, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.0,
-                       cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.AVG, cnn_ppi_global_pool_act: bool = True, cnn_ppi_global_pool_dropout: float = 0.0,
-                       use_mlp_flowstats: bool = True, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout: float = 0.0,
-                       use_mlp_shared: bool = True, mlp_shared_size: int = 512, mlp_shared_dropout: float = 0.0,
+                       cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 448), cnn_ppi_strides: tuple[int, ...] = (1, 1, 2, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 5, 5, 3),
+                       cnn_ppi_use_stdconv: bool = False, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.25,
+                       cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.MAX, cnn_ppi_global_pool_act: bool = False, cnn_ppi_global_pool_dropout: float = 0.05,
+                       use_mlp_flowstats: bool = False, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout: float = 0.0,
+                       use_mlp_shared: bool = True, mlp_shared_size: int = 448, mlp_shared_dropout: float = 0.0,
                        ):
         super().__init__()
         if ppi_input_channels != 3:
