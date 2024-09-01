@@ -302,7 +302,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                        packet_embedding_size: int = 11, packet_embedding_include_dir: bool = False, packet_embedding_init: PacketEmbeddingInitEnum = PacketEmbeddingInitEnum.BASIC,
                        packet_embedding_onehot_dirs: bool = True, packet_embedding_use_ipt: bool = True,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
-                       cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 448), cnn_ppi_strides: tuple[int, ...] = (1, 1, 2, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 5, 5, 3),
+                       cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 448), cnn_ppi_strides: tuple[int, ...] = (1, 1, 1, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 7, 5, 3),
                        cnn_ppi_use_stdconv: bool = False, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.25,
                        cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.MAX, cnn_ppi_global_pool_act: bool = False, cnn_ppi_global_pool_dropout: float = 0.05,
                        use_mlp_flowstats: bool = False, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout: float = 0.0,
@@ -338,6 +338,32 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                                                                                             packet_embedding_use_ipt=packet_embedding_use_ipt,
                                                                                             packet_embedding_init=packet_embedding_init,
                                                                                             conv=conv, norm=conv_norm)
+        
+
+        ipt_bins_sections = (
+            torch.cat((torch.arange(5, 105, step=5), torch.arange(110, 260, step=10))),
+            torch.cat((torch.arange(275, 1025, step=25), torch.arange(1050, 2050, step=50))),
+            torch.arange(2100, 5100, step=100),
+            torch.cat((torch.arange(5250, 7750, step=250), torch.arange(8000, 10500, step=500), torch.arange(11000, 31000, step=1000))),
+        )
+        ipt_bins = torch.cat((torch.tensor([0]),) + ipt_bins_sections)
+        self.register_buffer("ipt_bins", ipt_bins)
+        ipt_embedding_size = 4
+        self.packet_ipt_embedding = nn.Embedding(len(self.ipt_bins) + 1, embedding_dim=ipt_embedding_size, padding_idx=0)
+        self.packet_ipt_embedding.weight.data[0, :] = torch.zeros(ipt_embedding_size)
+        i = 1
+        for s in range(len(ipt_bins_sections)):
+            for b in range(len(ipt_bins_sections[s])):
+                inital_embedding = torch.zeros(ipt_embedding_size)
+                # inital_embedding[s] = 1 + (self.ipt_bins_mids[i - 1] / ipt_bins_sections[s][-1])
+                inital_embedding[s] = 0.5 + ((ipt_bins_sections[s][b] - ipt_bins_sections[s][0])  / (ipt_bins_sections[s][-1] - ipt_bins_sections[s][0]))
+                self.packet_ipt_embedding.weight.data[i, :] = inital_embedding
+                i += 1
+        initial_embedding_last = torch.zeros(ipt_embedding_size)
+        initial_embedding_last[3] = 2
+        self.packet_ipt_embedding.weight.data[-1, :] = initial_embedding_last
+
+        stem_output_channels += ipt_embedding_size - 1
         self.cnn_ppi = build_cnn_ppi(channels=cnn_ppi_channels,
                                      strides=cnn_ppi_strides,
                                      kernel_sizes=cnn_ppi_kernel_sizes,
@@ -388,9 +414,11 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                 embedding_input = (ppi[:, PPI_SIZE_POS, :] * ppi[:, PPI_DIR_POS, :]).int() + 1500
             else:
                 embedding_input = ppi[:, PPI_SIZE_POS, :].int()
-            packet_embedding_size = self.packet_embedding(embedding_input)
+            packet_embedding_size = (self.packet_embedding(embedding_input),)
             if self.packet_embedding_use_ipt:
-                packet_embedding_ipt = (ppi[:, PPI_IPT_POS, :].unsqueeze(-1),)
+                # packet_embedding_ipt = (ppi[:, PPI_IPT_POS, :].unsqueeze(-1),)
+                ipt_embedding_input = torch.bucketize(ppi[:, PPI_IPT_POS, :].contiguous(), self.ipt_bins)
+                packet_embedding_ipt = (self.packet_ipt_embedding(ipt_embedding_input),)
             else:
                 packet_embedding_ipt = ()
             if self.packet_embedding_onehot_dirs:
@@ -399,10 +427,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                     (ppi[:, PPI_DIR_POS, :] < 0).int().unsqueeze(-1),)
             else:
                 packet_embedding_dir = (ppi[:, PPI_DIR_POS, :].unsqueeze(-1),)
-            ppi_embedded = torch.cat(
-                packet_embedding_ipt + 
-                packet_embedding_dir + 
-                (packet_embedding_size,), dim=2).transpose(1, 2)
+            ppi_embedded = torch.cat(packet_embedding_ipt + packet_embedding_dir + packet_embedding_size, dim=2).transpose(1, 2)
         else:
             ppi_embedded = ppi
         out = self.cnn_ppi_stem(ppi_embedded)
