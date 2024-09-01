@@ -10,11 +10,18 @@ from cesnet_models.architectures.multimodal_cesnet import (NormalizationEnum, co
 from cesnet_models.constants import PPI_DIR_POS, PPI_IPT_POS, PPI_SIZE_POS
 
 
-class PacketEmbeddingInitEnum(Enum):
+class PacketSizeInitEnum(Enum):
     RANDOM = "random"
     BASIC = "basic"
     SAME = "same"
     WITH_DIR = "with-dir"
+    PLE = "ple"
+    def __str__(self): return self.value
+
+class ProcessIPT(Enum):
+    NONE = "none"
+    DIRECT = "direct"
+    EMBED = "embed"
     def __str__(self): return self.value
 
 class GlobalPoolEnum(Enum):
@@ -241,14 +248,20 @@ def build_cnn_ppi_stem(stem_type: StemType,
                        ppi_input_channels :int,
                        out_channels: int,
                        kernel_size: int,
-                       packet_embedding_size: int,
-                       packet_embedding_include_dir: bool,
-                       packet_embedding_onehot_dirs: bool,
-                       packet_embedding_use_ipt: bool,
-                       packet_embedding_init: PacketEmbeddingInitEnum,
-                       conv, norm):
+                       conv,
+                       norm,
+                       pe_size_embedding: int,
+                       pe_size_include_dir: bool,
+                       pe_size_init: PacketSizeInitEnum,
+                       pe_size_ple_bin_size: int,
+                       pe_ipt_embedding: int,
+                       pe_ipt_processing: ProcessIPT,
+                       pe_onehot_dirs: bool,
+):
     stem = []
-    packet_embedding = None
+    packet_size_nn_embedding = None
+    packet_ipt_nn_embedding = None
+    ipt_bins = None
     stem_output_channels = ppi_input_channels
     if stem_type == StemType.CONV:
         stem = [
@@ -258,33 +271,69 @@ def build_cnn_ppi_stem(stem_type: StemType,
         ]
         stem_output_channels = out_channels
     if stem_type == StemType.EMBED or stem_type == StemType.EMBED_CONV:
-        num_embeddings = 1500 * (2 if packet_embedding_include_dir else 1) + 1
-        packet_embedding = nn.Embedding(num_embeddings, packet_embedding_size, padding_idx=1500 if packet_embedding_include_dir else 0)
-        if packet_embedding_init != PacketEmbeddingInitEnum.RANDOM:
-            if packet_embedding_include_dir:
+        # Packet Size Embedding
+        packet_size_nn_embedding = nn.Embedding(num_embeddings=1500 * (2 if pe_size_include_dir else 1) + 1, embedding_dim=pe_size_embedding, padding_idx=1500 if pe_size_include_dir else 0)
+        ple_size_bins = list(range(0, 1500, pe_size_ple_bin_size))
+        if pe_size_init != PacketSizeInitEnum.RANDOM:
+            if pe_size_include_dir:
                 for i, size in enumerate(range(-1500, 1501)):
-                    if packet_embedding_init == PacketEmbeddingInitEnum.BASIC:
-                        inital_embedding = torch.zeros(packet_embedding_size)
+                    if pe_size_init == PacketSizeInitEnum.BASIC:
+                        inital_embedding = torch.zeros(pe_size_embedding)
                         inital_embedding[0] = abs(size) / 1500
-                    elif packet_embedding_init == PacketEmbeddingInitEnum.SAME:
-                        inital_embedding = torch.ones(packet_embedding_size) * (abs(size) / 1500)
-                    elif packet_embedding_init == PacketEmbeddingInitEnum.WITH_DIR:
-                        inital_embedding = torch.zeros(packet_embedding_size)
+                    elif pe_size_init == PacketSizeInitEnum.SAME:
+                        inital_embedding = torch.ones(pe_size_embedding) * (abs(size) / 1500)
+                    elif pe_size_init == PacketSizeInitEnum.WITH_DIR:
+                        inital_embedding = torch.zeros(pe_size_embedding)
                         inital_embedding[0] = abs(size) / 1500
                         if size != 0:
                             inital_embedding[1] = 1 if size > 0 else 0
                             inital_embedding[2] = 1 if size < 0 else 0
-                    packet_embedding.weight.data[i, :] = inital_embedding
+                    packet_size_nn_embedding.weight.data[i, :] = inital_embedding
             else:
                 for i, size in enumerate(range(0, 1501)):
-                    if packet_embedding_init == PacketEmbeddingInitEnum.BASIC:
-                        inital_embedding = torch.zeros(packet_embedding_size)
+                    if pe_size_init == PacketSizeInitEnum.BASIC:
+                        inital_embedding = torch.zeros(pe_size_embedding)
                         inital_embedding[0] = size / 1500
-                    elif packet_embedding_init == PacketEmbeddingInitEnum.SAME:
-                        inital_embedding = torch.ones(packet_embedding_size) * (size / 1500)
-                    packet_embedding.weight.data[i, :] = inital_embedding
-        conv1_input_channels = packet_embedding_size + (1 if packet_embedding_use_ipt else 0)
-        conv1_input_channels += 2 if packet_embedding_onehot_dirs else 1
+                    elif pe_size_init == PacketSizeInitEnum.SAME:
+                        inital_embedding = torch.ones(pe_size_embedding) * (size / 1500)
+                    elif pe_size_init == PacketSizeInitEnum.PLE:
+                        if size == 1500:
+                            inital_embedding = torch.zeros(pe_size_embedding)
+                            inital_embedding[:len(ple_size_bins)] = 1
+                        else:
+                            inital_embedding = torch.zeros(pe_size_embedding)
+                            bin_idx = size // pe_size_ple_bin_size
+                            start_bin = ple_size_bins[bin_idx]
+                            relative_pos = (size - start_bin) / pe_size_ple_bin_size
+                            inital_embedding[bin_idx] = relative_pos
+                            if bin_idx >= 1:
+                                inital_embedding[:bin_idx] = 1
+                    packet_size_nn_embedding.weight.data[i, :] = inital_embedding
+        # IPT Embedding
+        if pe_ipt_processing == ProcessIPT.EMBED:
+            ipt_bins_sections = (
+                torch.cat((torch.arange(0, 105, step=5), torch.arange(110, 260, step=10))),
+                torch.cat((torch.arange(275, 1025, step=25), torch.arange(1050, 2050, step=50))),
+                torch.arange(2100, 5100, step=100),
+                torch.cat((torch.arange(5250, 7750, step=250), torch.arange(8000, 10500, step=500), torch.arange(11000, 32000, step=1000))),
+            )
+            ipt_bins = torch.cat(ipt_bins_sections)
+            packet_ipt_nn_embedding = nn.Embedding(num_embeddings=len(ipt_bins), embedding_dim=pe_ipt_embedding, padding_idx=0)
+            i = 0
+            for s in range(len(ipt_bins_sections)):
+                segment_length = len(ipt_bins_sections[s])
+                for b in range(segment_length):
+                    inital_embedding = torch.zeros(pe_ipt_embedding)
+                    last_bin = ipt_bins_sections[s - 1][-1] if s > 0 else 0
+                    inital_embedding[s] = ((ipt_bins_sections[s][b] - last_bin)  / (ipt_bins_sections[s][-1] - last_bin))
+                    if s >= 1:
+                        inital_embedding[:s] = 1
+                    packet_ipt_nn_embedding.weight.data[i, :] = inital_embedding
+                    i += 1
+            ipt_bins[-1] = 2**32
+
+        conv1_input_channels = pe_size_embedding + (pe_ipt_embedding if pe_ipt_processing == ProcessIPT.EMBED else 1 if pe_ipt_processing == ProcessIPT.DIRECT else 0)
+        conv1_input_channels += 2 if pe_onehot_dirs else 1
         if stem_type == StemType.EMBED_CONV:
             stem = [
                 conv(conv1_input_channels, out_channels, kernel_size=kernel_size, stride=1),
@@ -294,13 +343,13 @@ def build_cnn_ppi_stem(stem_type: StemType,
             stem_output_channels = out_channels
         else:
             stem_output_channels = conv1_input_channels
-    return nn.Sequential(*stem) if len(stem) > 0 else nn.Identity(), packet_embedding, stem_output_channels
+    return nn.Sequential(*stem) if len(stem) > 0 else nn.Identity(), stem_output_channels, packet_size_nn_embedding, packet_ipt_nn_embedding, ipt_bins
 
 class Multimodal_CESNET_Enhanced(nn.Module):
     def __init__(self, num_classes: int = 0, flowstats_input_size: int = 0, ppi_input_channels: int = 3,
                        init_weights: bool = True, cnn_ppi_stem_type: StemType = StemType.EMBED,
-                       packet_embedding_size: int = 11, packet_embedding_include_dir: bool = False, packet_embedding_init: PacketEmbeddingInitEnum = PacketEmbeddingInitEnum.BASIC,
-                       packet_embedding_onehot_dirs: bool = True, packet_embedding_use_ipt: bool = True,
+                       pe_size_embedding: int = 10, pe_size_include_dir: bool = False, pe_size_init: PacketSizeInitEnum = PacketSizeInitEnum.PLE, pe_size_ple_bin_size: int = 250,
+                       pe_ipt_processing: ProcessIPT = ProcessIPT.EMBED, pe_ipt_embedding: int = 4, pe_onehot_dirs: bool = True,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
                        cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 448), cnn_ppi_strides: tuple[int, ...] = (1, 1, 1, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 7, 5, 3),
                        cnn_ppi_use_stdconv: bool = False, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.25,
@@ -313,57 +362,41 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             raise ValueError("ppi_input_channels must be 3 for now")
         if use_mlp_flowstats and flowstats_input_size == 0:
             raise ValueError("flowstats_input_size must be set when use_mlp_flowstats is used")
-        if packet_embedding_init == PacketEmbeddingInitEnum.WITH_DIR and not packet_embedding_include_dir:
-            raise ValueError("packet_embedding_init cannot be with-dir when packet_embedding_include_dir is false")
+        if pe_size_init == PacketSizeInitEnum.WITH_DIR and not pe_size_include_dir:
+            raise ValueError("packet_embedding_init cannot be with-dir when pe_size_include_dir is false")
+        if pe_size_init == PacketSizeInitEnum.PLE and pe_size_include_dir:
+            raise ValueError("packet_embedding_init cannot be PLE  when pe_size_include_dir is true")
+        if pe_size_init == PacketSizeInitEnum.PLE and (1500 // pe_size_ple_bin_size) > pe_size_embedding:
+            raise ValueError("pe_size_embedding must be greater than the number of bins for PLE")
 
         self.num_classes = num_classes
         self.use_mlp_flowstats = use_mlp_flowstats
         self.use_mlp_shared = use_mlp_shared
         mlp_shared_input_size = cnn_ppi_channels[-1] + mlp_flowstats_size2 if use_mlp_flowstats else cnn_ppi_channels[-1]
         self.num_features = mlp_shared_size if self.use_mlp_shared else mlp_shared_input_size
-        self.packet_embedding_include_dir = packet_embedding_include_dir
-        self.packet_embedding_onehot_dirs = packet_embedding_onehot_dirs
-        self.packet_embedding_use_ipt = packet_embedding_use_ipt
+        self.pe_size_include_dir = pe_size_include_dir
+        self.pe_onehot_dirs = pe_onehot_dirs
+        self.pe_ipt_processing = pe_ipt_processing
         conv = StdConv1d if cnn_ppi_use_stdconv else PadConv1d
         conv_norm = partial(conv_norm_from_enum, norm_enum=conv_normalization, group_norm_groups=group_norm_groups)
         linear_norm = partial(linear_norm_from_enum, norm_enum=linear_normalization)
         self.cnn_ppi_stem_type = cnn_ppi_stem_type
-        self.cnn_ppi_stem, self.packet_embedding, stem_output_channels = build_cnn_ppi_stem(stem_type=cnn_ppi_stem_type,
-                                                                                            ppi_input_channels=ppi_input_channels,
-                                                                                            out_channels=cnn_ppi_channels[0] // 2,
-                                                                                            kernel_size=7,
-                                                                                            packet_embedding_size=packet_embedding_size,
-                                                                                            packet_embedding_include_dir=packet_embedding_include_dir,
-                                                                                            packet_embedding_onehot_dirs=packet_embedding_onehot_dirs,
-                                                                                            packet_embedding_use_ipt=packet_embedding_use_ipt,
-                                                                                            packet_embedding_init=packet_embedding_init,
-                                                                                            conv=conv, norm=conv_norm)
-        
+        stem = build_cnn_ppi_stem(stem_type=cnn_ppi_stem_type,
+                                  ppi_input_channels=ppi_input_channels,
+                                  out_channels=cnn_ppi_channels[0] // 2,
+                                  kernel_size=7,
+                                  conv=conv, norm=conv_norm,
+                                  pe_size_embedding=pe_size_embedding,
+                                  pe_size_include_dir=pe_size_include_dir,
+                                  pe_size_init=pe_size_init,
+                                  pe_size_ple_bin_size=pe_size_ple_bin_size,
+                                  pe_ipt_embedding=pe_ipt_embedding,
+                                  pe_ipt_processing=pe_ipt_processing,
+                                  pe_onehot_dirs=pe_onehot_dirs,)
+        self.cnn_ppi_stem, stem_output_channels, self.packet_size_nn_embedding, self.packet_ipt_nn_embedding, ipt_bins = stem
+        if ipt_bins is not None:
+            self.register_buffer("ipt_bins", ipt_bins)
 
-        ipt_bins_sections = (
-            torch.cat((torch.arange(5, 105, step=5), torch.arange(110, 260, step=10))),
-            torch.cat((torch.arange(275, 1025, step=25), torch.arange(1050, 2050, step=50))),
-            torch.arange(2100, 5100, step=100),
-            torch.cat((torch.arange(5250, 7750, step=250), torch.arange(8000, 10500, step=500), torch.arange(11000, 31000, step=1000))),
-        )
-        ipt_bins = torch.cat((torch.tensor([0]),) + ipt_bins_sections)
-        self.register_buffer("ipt_bins", ipt_bins)
-        ipt_embedding_size = 4
-        self.packet_ipt_embedding = nn.Embedding(len(self.ipt_bins) + 1, embedding_dim=ipt_embedding_size, padding_idx=0)
-        self.packet_ipt_embedding.weight.data[0, :] = torch.zeros(ipt_embedding_size)
-        i = 1
-        for s in range(len(ipt_bins_sections)):
-            for b in range(len(ipt_bins_sections[s])):
-                inital_embedding = torch.zeros(ipt_embedding_size)
-                # inital_embedding[s] = 1 + (self.ipt_bins_mids[i - 1] / ipt_bins_sections[s][-1])
-                inital_embedding[s] = 0.5 + ((ipt_bins_sections[s][b] - ipt_bins_sections[s][0])  / (ipt_bins_sections[s][-1] - ipt_bins_sections[s][0]))
-                self.packet_ipt_embedding.weight.data[i, :] = inital_embedding
-                i += 1
-        initial_embedding_last = torch.zeros(ipt_embedding_size)
-        initial_embedding_last[3] = 2
-        self.packet_ipt_embedding.weight.data[-1, :] = initial_embedding_last
-
-        stem_output_channels += ipt_embedding_size - 1
         self.cnn_ppi = build_cnn_ppi(channels=cnn_ppi_channels,
                                      strides=cnn_ppi_strides,
                                      kernel_sizes=cnn_ppi_kernel_sizes,
@@ -409,19 +442,21 @@ class Multimodal_CESNET_Enhanced(nn.Module):
 
     def forward_features(self, ppi, flowstats):
         if self.cnn_ppi_stem_type == StemType.EMBED or self.cnn_ppi_stem_type == StemType.EMBED_CONV:
-            assert self.packet_embedding is not None
-            if self.packet_embedding_include_dir:
+            assert self.packet_size_nn_embedding is not None
+            if self.pe_size_include_dir:
                 embedding_input = (ppi[:, PPI_SIZE_POS, :] * ppi[:, PPI_DIR_POS, :]).int() + 1500
             else:
                 embedding_input = ppi[:, PPI_SIZE_POS, :].int()
-            packet_embedding_size = (self.packet_embedding(embedding_input),)
-            if self.packet_embedding_use_ipt:
-                # packet_embedding_ipt = (ppi[:, PPI_IPT_POS, :].unsqueeze(-1),)
+            packet_embedding_size = (self.packet_size_nn_embedding(embedding_input),)
+            if self.pe_ipt_processing == ProcessIPT.DIRECT:
+                packet_embedding_ipt = (ppi[:, PPI_IPT_POS, :].unsqueeze(-1),)
+            elif self.pe_ipt_processing == ProcessIPT.EMBED:
+                assert self.packet_ipt_nn_embedding is not None
                 ipt_embedding_input = torch.bucketize(ppi[:, PPI_IPT_POS, :].contiguous(), self.ipt_bins)
-                packet_embedding_ipt = (self.packet_ipt_embedding(ipt_embedding_input),)
+                packet_embedding_ipt = (self.packet_ipt_nn_embedding(ipt_embedding_input),)
             else:
                 packet_embedding_ipt = ()
-            if self.packet_embedding_onehot_dirs:
+            if self.pe_onehot_dirs:
                 packet_embedding_dir = (
                     (ppi[:, PPI_DIR_POS, :] > 0).int().unsqueeze(-1),
                     (ppi[:, PPI_DIR_POS, :] < 0).int().unsqueeze(-1),)
