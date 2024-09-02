@@ -222,7 +222,8 @@ def build_cnn_ppi(channels: tuple[int, ...],
                   conv, norm,
                   dropout_rate_path: float = 0.0,
                   downsample_avg=False,
-                  block_class=None):
+                  block_class=None,
+                  first_block_bottle_ratio: float = 0.5,):
     assert len(channels) == len(strides) == len(kernel_sizes)
     if block_class is None:
         block_class = Bottleneck
@@ -232,7 +233,7 @@ def build_cnn_ppi(channels: tuple[int, ...],
     for i in range(num_blocks):
         in_channels = stem_output_channels if i == 0 else channels[i - 1]
         if i == 0 and block_class == Bottleneck:
-            kwargs = {"bottle_ratio": 0.5}
+            kwargs = {"bottle_ratio": first_block_bottle_ratio}
         else:
             kwargs = {}
         blocks.append(block_class(in_channels=in_channels,
@@ -352,7 +353,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                        pe_ipt_processing: ProcessIPT = ProcessIPT.EMBED, pe_ipt_embedding: int = 4, pe_onehot_dirs: bool = True,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
                        cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 448), cnn_ppi_strides: tuple[int, ...] = (1, 1, 1, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 7, 5, 3),
-                       cnn_ppi_use_stdconv: bool = False, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.25,
+                       cnn_ppi_use_stdconv: bool = False, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.25, cnn_ppi_first_bottle_ratio: float = 0.5,
                        cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.MAX, cnn_ppi_global_pool_act: bool = False, cnn_ppi_global_pool_dropout: float = 0.05,
                        use_mlp_flowstats: bool = False, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout: float = 0.0,
                        use_mlp_shared: bool = True, mlp_shared_size: int = 448, mlp_shared_dropout: float = 0.0,
@@ -402,6 +403,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                                      kernel_sizes=cnn_ppi_kernel_sizes,
                                      stem_output_channels=stem_output_channels,
                                      dropout_rate_path=cnn_ppi_blocks_dropout,
+                                     first_block_bottle_ratio=cnn_ppi_first_bottle_ratio,
                                      downsample_avg=cnn_ppi_downsample_avg,
                                      conv=conv, norm=conv_norm)
         self.cnn_global_pooling = nn.Sequential(
