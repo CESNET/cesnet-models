@@ -312,12 +312,22 @@ def build_cnn_ppi_stem(stem_type: StemType,
                     packet_size_nn_embedding.weight.data[i, :] = inital_embedding
         # IPT Embedding
         if pe_ipt_processing == ProcessIPT.EMBED:
-            ipt_bins_sections = (
-                torch.cat((torch.arange(0, 105, step=5), torch.arange(110, 260, step=10))),
-                torch.cat((torch.arange(275, 1025, step=25), torch.arange(1050, 2050, step=50))),
-                torch.arange(2100, 5100, step=100),
-                torch.cat((torch.arange(5250, 7750, step=250), torch.arange(8000, 10500, step=500), torch.arange(11000, 32000, step=1000))),
-            )
+            if pe_ipt_embedding == 4:
+                ipt_bins_sections = (
+                    torch.cat((torch.arange(0, 105, step=5), torch.arange(110, 260, step=10))),
+                    torch.cat((torch.arange(275, 1025, step=25), torch.arange(1050, 2050, step=50))),
+                    torch.arange(2100, 5100, step=100),
+                    torch.cat((torch.arange(5250, 7750, step=250), torch.arange(8000, 10500, step=500), torch.arange(11000, 32000, step=1000))),
+                )
+            elif pe_ipt_embedding == 6:
+                ipt_bins_sections = (
+                    torch.arange(0, 11),
+                    torch.cat((torch.arange(15, 105, step=5), torch.arange(110, 260, step=10))),
+                    torch.cat((torch.arange(275, 1025, step=25), torch.arange(1050, 2050, step=50))),
+                    torch.arange(2100, 5100, step=100),
+                    torch.cat((torch.arange(5250, 7750, step=250), torch.arange(8000, 10500, step=500))),
+                    torch.arange(11000, 32000, step=1000),
+                )
             ipt_bins = torch.cat(ipt_bins_sections)
             packet_ipt_nn_embedding = nn.Embedding(num_embeddings=len(ipt_bins), embedding_dim=pe_ipt_embedding, padding_idx=0)
             i = 0
@@ -366,9 +376,11 @@ class Multimodal_CESNET_Enhanced(nn.Module):
         if pe_size_init == PacketSizeInitEnum.WITH_DIR and not pe_size_include_dir:
             raise ValueError("packet_embedding_init cannot be with-dir when pe_size_include_dir is false")
         if pe_size_init == PacketSizeInitEnum.PLE and pe_size_include_dir:
-            raise ValueError("packet_embedding_init cannot be PLE  when pe_size_include_dir is true")
+            raise ValueError("packet_embedding_init cannot be PLE when pe_size_include_dir is true")
         if pe_size_init == PacketSizeInitEnum.PLE and (1500 // pe_size_ple_bin_size) > pe_size_embedding:
             raise ValueError("pe_size_embedding must be greater than the number of bins for PLE")
+        if pe_ipt_processing == ProcessIPT.EMBED and pe_ipt_embedding not in (4, 6):
+            raise ValueError("pe_ipt_embedding must be 4 or 6")
 
         self.num_classes = num_classes
         self.use_mlp_flowstats = use_mlp_flowstats
