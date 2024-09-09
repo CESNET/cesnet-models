@@ -36,6 +36,11 @@ class StemType(Enum):
     NONE = "none"
     def __str__(self): return self.value
 
+class DropoutType(Enum):
+    REGULAR = "regular"
+    CHANNELS = "channels"
+    def __str__(self): return self.value
+
 def init_weights_fn(module: nn.Module):
     # Changed to zero init for bias, TODO experiment with .weight
     if isinstance(module, nn.Linear):
@@ -106,6 +111,7 @@ class BasicBlock(nn.Module):
             conv=None,
             norm=None,
             dropout_rate_path=0.0,
+            dropout_type=DropoutType.REGULAR,
             downsample_avg=False,
     ):
         super().__init__()
@@ -130,8 +136,14 @@ class BasicBlock(nn.Module):
         self.norm1 = norm(out_channels)
         self.conv2 = conv(out_channels, out_channels, kernel_size=3)
         self.norm2 = norm(out_channels)
-        self.drop_path = nn.Dropout(dropout_rate_path) if dropout_rate_path > 0 else nn.Identity()
         self.act = act(inplace=True)
+        if dropout_rate_path > 0:
+            if dropout_type == DropoutType.REGULAR:
+                self.drop_path = nn.Dropout(dropout_rate_path)
+            elif dropout_type == DropoutType.CHANNELS:
+                self.drop_path = nn.Dropout1d(dropout_rate_path)
+        else:
+            self.drop_path = nn.Identity()
 
     def forward(self, x):
         # shortcut branch
@@ -162,6 +174,7 @@ class Bottleneck(nn.Module):
             conv=None,
             norm=None,
             dropout_rate_path=0.0,
+            dropout_type=DropoutType.REGULAR,
             bottle_ratio=0.25,
             downsample_avg=False,
     ):
@@ -191,8 +204,14 @@ class Bottleneck(nn.Module):
         self.norm2 = norm(mid_channels)
         self.conv3 = conv(mid_channels, out_channels, kernel_size=1)
         self.norm3 = norm(out_channels)
-        self.drop_path = nn.Dropout(dropout_rate_path) if dropout_rate_path > 0 else nn.Identity()
         self.act = act(inplace=True)
+        if dropout_rate_path > 0:
+            if dropout_type == DropoutType.REGULAR:
+                self.drop_path = nn.Dropout(dropout_rate_path)
+            elif dropout_type == DropoutType.CHANNELS:
+                self.drop_path = nn.Dropout1d(dropout_rate_path)
+        else:
+            self.drop_path = nn.Identity()
 
     def forward(self, x):
         # shortcut branch
@@ -221,6 +240,7 @@ def build_cnn_ppi(channels: tuple[int, ...],
                   stem_output_channels: int,
                   conv, norm,
                   dropout_rate_path: float = 0.0,
+                  dropout_type: DropoutType = DropoutType.REGULAR,
                   downsample_avg=False,
                   block_class=None,
                   first_block_bottle_ratio: float = 0.5,):
@@ -241,6 +261,7 @@ def build_cnn_ppi(channels: tuple[int, ...],
                                   kernel_size=kernel_sizes[i],
                                   stride=strides[i],
                                   dropout_rate_path=block_dprs[i],
+                                  dropout_type=dropout_type,
                                   downsample_avg=downsample_avg,
                                   conv=conv,norm=norm, **kwargs))
     return nn.Sequential(*blocks)
@@ -363,7 +384,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                        pe_ipt_processing: ProcessIPT = ProcessIPT.EMBED, pe_ipt_embedding: int = 4, pe_onehot_dirs: bool = True,
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
                        cnn_ppi_channels: tuple[int, ...] = (128, 256, 384, 448), cnn_ppi_strides: tuple[int, ...] = (1, 1, 1, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 7, 5, 3),
-                       cnn_ppi_use_stdconv: bool = False, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.25, cnn_ppi_first_bottle_ratio: float = 0.5,
+                       cnn_ppi_use_stdconv: bool = False, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.25, cnn_ppi_first_bottle_ratio: float = 0.5, cnn_ppi_dropout_type: DropoutType = DropoutType.REGULAR,
                        cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.MAX, cnn_ppi_global_pool_act: bool = False, cnn_ppi_global_pool_dropout: float = 0.05,
                        use_mlp_flowstats: bool = False, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout: float = 0.0,
                        use_mlp_shared: bool = True, mlp_shared_size: int = 448, mlp_shared_dropout: float = 0.0,
@@ -415,6 +436,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                                      kernel_sizes=cnn_ppi_kernel_sizes,
                                      stem_output_channels=stem_output_channels,
                                      dropout_rate_path=cnn_ppi_blocks_dropout,
+                                     dropout_type=cnn_ppi_dropout_type,
                                      first_block_bottle_ratio=cnn_ppi_first_bottle_ratio,
                                      downsample_avg=cnn_ppi_downsample_avg,
                                      conv=conv, norm=conv_norm)
