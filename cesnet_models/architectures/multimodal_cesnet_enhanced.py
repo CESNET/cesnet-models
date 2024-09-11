@@ -373,6 +373,21 @@ def build_cnn_ppi_stem(stem_type: StemType,
                     torch.cat((torch.arange(5250, 7750, step=250), torch.arange(8000, 15500, step=500))),
                     torch.arange(16000, 32000, step=1000),
                 )
+            elif pe_ipt_embedding == 12:
+                ipt_bins_sections = (
+                    torch.tensor([0]),
+                    torch.arange(1, 11, step=1),
+                    torch.arange(12, 32, step=2),
+                    torch.arange(33, 63, step=3),
+                    torch.arange(65, 205, step=5),
+                    torch.arange(210, 510, step=10),
+                    torch.arange(525, 1025, step=25),
+                    torch.arange(1050, 2050, step=50),
+                    torch.arange(2100, 5100, step=100),
+                    torch.arange(5250, 7750, step=250),
+                    torch.arange(8000, 15500, step=500),
+                    torch.arange(16000, 32000, step=1000),
+                )
             ipt_bins = torch.cat(ipt_bins_sections)
             packet_ipt_nn_embedding = nn.Embedding(num_embeddings=len(ipt_bins), embedding_dim=pe_ipt_embedding, padding_idx=0)
             i = 0
@@ -425,8 +440,8 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             raise ValueError("packet_embedding_init cannot be PLE when pe_size_include_dir is true")
         if pe_size_init == PacketSizeInitEnum.PLE and (1500 // pe_size_ple_bin_size) > pe_size_embedding:
             raise ValueError("pe_size_embedding must be greater than the number of bins for PLE")
-        if pe_ipt_processing == ProcessIPT.EMBED and pe_ipt_embedding not in (4, 6, 8, 10):
-            raise ValueError("pe_ipt_embedding must be 4, 6, 8, or 10")
+        if pe_ipt_processing == ProcessIPT.EMBED and pe_ipt_embedding not in (4, 6, 8, 10, 12):
+            raise ValueError("pe_ipt_embedding must be 4, 6, 8, 10, or 12")
 
         self.num_classes = num_classes
         self.use_mlp_flowstats = use_mlp_flowstats
