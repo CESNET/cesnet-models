@@ -27,6 +27,8 @@ class ProcessIPT(Enum):
 class GlobalPoolEnum(Enum):
     MAX = "max"
     AVG = "avg"
+    GEM_3 = "gem-3"
+    GEM_LEARNABLE = "gem-learnable"
     def __str__(self): return self.value
 
 class StemType(Enum):
@@ -56,6 +58,22 @@ def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1) -> int:
     # Calculate symmetric padding for a convolution
     padding = ((stride - 1) + dilation * (kernel_size - 1)) // 2
     return padding
+
+class AdaptiveGeM(nn.Module):
+    def __init__(self, output_size: int, p: float = 3.0, eps: float = 1e-6, learnable_p: bool = False):
+        super().__init__()
+        if learnable_p:
+            self.p = nn.Parameter(torch.ones(1) * p)
+        else:
+            self.p = p
+        self.output_size = output_size
+        self.eps = eps
+
+    def forward(self, x):
+        return F.adaptive_avg_pool1d(x.clamp(min=self.eps).pow(self.p), output_size=self.output_size).pow(1./self.p)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(p={self.p.item() if isinstance(self.p, nn.Parameter) else self.p:.4f}, eps={self.eps})"
 
 class StdConv1d(nn.Conv1d):
     """Conv1d with Weight Standardization.
@@ -480,8 +498,16 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                                      first_block_bottle_ratio=cnn_ppi_first_bottle_ratio,
                                      downsample_avg=cnn_ppi_downsample_avg,
                                      conv=conv, norm=conv_norm)
-        self.cnn_global_pooling = nn.Sequential(
-            nn.AdaptiveAvgPool1d(output_size=1) if cnn_ppi_global_pool == GlobalPoolEnum.AVG else nn.AdaptiveMaxPool1d(output_size=1),
+        if cnn_ppi_global_pool == GlobalPoolEnum.AVG:
+            gp = nn.AdaptiveAvgPool1d(output_size=1)
+        elif cnn_ppi_global_pool == GlobalPoolEnum.MAX:
+            gp = nn.AdaptiveMaxPool1d(output_size=1)
+        elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_3:
+            gp = AdaptiveGeM(output_size=1, p=3.0)
+        elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_LEARNABLE:
+            gp = AdaptiveGeM(output_size=1, p=3.0, learnable_p=True)
+        self.cnn_ppi_global_pool = nn.Sequential(
+            gp,
             nn.Flatten(),
             nn.Dropout(cnn_ppi_global_pool_dropout) if cnn_ppi_global_pool_dropout > 0 else nn.Identity(),
             nn.ReLU(inplace=True) if cnn_ppi_global_pool_act else nn.Identity(),
@@ -543,7 +569,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             ppi_embedded = ppi
         out = self.cnn_ppi_stem(ppi_embedded)
         out = self.cnn_ppi(out)
-        out = self.cnn_global_pooling(out)
+        out = self.cnn_ppi_global_pool(out)
         if self.use_mlp_flowstats:
             out_flowstats = self.mlp_flowstats(flowstats)
             out = torch.column_stack([out, out_flowstats])
