@@ -28,6 +28,7 @@ class GlobalPoolEnum(Enum):
     MAX = "max"
     AVG = "avg"
     GEM_3 = "gem-3"
+    GEM_6 = "gem-6"
     GEM_LEARNABLE = "gem-learnable"
     def __str__(self): return self.value
 
@@ -504,6 +505,8 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             gp = nn.AdaptiveMaxPool1d(output_size=1)
         elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_3:
             gp = AdaptiveGeM(output_size=1, p=3.0)
+        elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_6:
+            gp = AdaptiveGeM(output_size=1, p=6.0)
         elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_LEARNABLE:
             gp = AdaptiveGeM(output_size=1, p=3.0, learnable_p=True)
         self.cnn_ppi_global_pool = nn.Sequential(
