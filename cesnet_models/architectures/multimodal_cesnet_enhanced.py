@@ -29,7 +29,8 @@ class GlobalPoolEnum(Enum):
     AVG = "avg"
     GEM_3 = "gem-3"
     GEM_6 = "gem-6"
-    GEM_LEARNABLE = "gem-learnable"
+    GEM_3_LEARNABLE = "gem-3-learnable"
+    GEM_6_LEARNABLE = "gem-6-learnable"
     def __str__(self): return self.value
 
 class StemType(Enum):
@@ -507,8 +508,10 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             gp = AdaptiveGeM(output_size=1, p=3.0)
         elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_6:
             gp = AdaptiveGeM(output_size=1, p=6.0)
-        elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_LEARNABLE:
+        elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_3_LEARNABLE:
             gp = AdaptiveGeM(output_size=1, p=3.0, learnable_p=True)
+        elif cnn_ppi_global_pool == GlobalPoolEnum.GEM_6_LEARNABLE:
+            gp = AdaptiveGeM(output_size=1, p=6.0, learnable_p=True)
         self.cnn_ppi_global_pool = nn.Sequential(
             gp,
             nn.Flatten(),
