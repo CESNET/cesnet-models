@@ -448,6 +448,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                        cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.MAX, cnn_ppi_global_pool_act: bool = False, cnn_ppi_global_pool_dropout: float = 0.0,
                        use_mlp_flowstats: bool = False, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout: float = 0.0,
                        use_mlp_shared: bool = True, mlp_shared_size: int = 448, mlp_shared_dropout: float = 0.0,
+                       save_psizes_hist: bool = False,
                        ):
         super().__init__()
         if ppi_input_channels != 3:
@@ -547,30 +548,37 @@ class Multimodal_CESNET_Enhanced(nn.Module):
             self.classifier = nn.Identity()
         if init_weights:
             self.apply(init_weights_fn)
+        self.save_psizes_hist = save_psizes_hist
+        if self.save_psizes_hist:
+            if self.pe_size_include_dir:
+                raise ValueError("save_psizes_hist cannot be used with pe_size_include_dir")
+            self.register_buffer("psizes_hist", torch.zeros(1501, dtype=torch.int64))
 
     def forward_features(self, ppi, flowstats):
         if self.cnn_ppi_stem_type == StemType.EMBED or self.cnn_ppi_stem_type == StemType.EMBED_CONV:
             assert self.packet_size_nn_embedding is not None
             if self.pe_size_include_dir:
-                embedding_input = (ppi[:, PPI_SIZE_POS, :] * ppi[:, PPI_DIR_POS, :]).int() + 1500
+                size_embedding_input = (ppi[:, PPI_SIZE_POS, :] * ppi[:, PPI_DIR_POS, :]).int() + 1500
             else:
-                embedding_input = ppi[:, PPI_SIZE_POS, :].int()
-            packet_embedding_size = (self.packet_size_nn_embedding(embedding_input),)
+                size_embedding_input = ppi[:, PPI_SIZE_POS, :].int()
+                if self.training and self.save_psizes_hist:
+                    self.psizes_hist += torch.histc(size_embedding_input, bins=1501, min=0, max=1500)
+            size = (self.packet_size_nn_embedding(size_embedding_input),)
             if self.pe_ipt_processing == ProcessIPT.DIRECT:
-                packet_embedding_ipt = (ppi[:, PPI_IPT_POS, :].unsqueeze(-1),)
+                ipt = (ppi[:, PPI_IPT_POS, :].unsqueeze(-1),)
             elif self.pe_ipt_processing == ProcessIPT.EMBED:
                 assert self.packet_ipt_nn_embedding is not None
                 ipt_embedding_input = torch.bucketize(ppi[:, PPI_IPT_POS, :].contiguous(), self.ipt_bins)
-                packet_embedding_ipt = (self.packet_ipt_nn_embedding(ipt_embedding_input),)
+                ipt = (self.packet_ipt_nn_embedding(ipt_embedding_input),)
             else:
-                packet_embedding_ipt = ()
+                ipt = ()
             if self.pe_onehot_dirs:
-                packet_embedding_dir = (
+                dir = (
                     (ppi[:, PPI_DIR_POS, :] > 0).int().unsqueeze(-1),
                     (ppi[:, PPI_DIR_POS, :] < 0).int().unsqueeze(-1),)
             else:
-                packet_embedding_dir = (ppi[:, PPI_DIR_POS, :].unsqueeze(-1),)
-            ppi_embedded = torch.cat(packet_embedding_ipt + packet_embedding_dir + packet_embedding_size, dim=2).transpose(1, 2)
+                dir = (ppi[:, PPI_DIR_POS, :].unsqueeze(-1),)
+            ppi_embedded = torch.cat(ipt + dir + size, dim=2).transpose(1, 2)
         else:
             ppi_embedded = ppi
         out = self.cnn_ppi_stem(ppi_embedded)
