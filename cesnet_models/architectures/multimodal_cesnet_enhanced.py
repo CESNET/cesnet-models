@@ -8,6 +8,7 @@ from torch.nn import functional as F
 from cesnet_models.architectures.multimodal_cesnet import (NormalizationEnum, conv_norm_from_enum,
                                                            linear_norm_from_enum)
 from cesnet_models.constants import PPI_DIR_POS, PPI_IPT_POS, PPI_SIZE_POS
+from cesnet_models.helpers import convert_str_to_enum
 
 
 class PacketSizeInitEnum(Enum):
@@ -451,6 +452,13 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                        save_psizes_hist: bool = False,
                        ):
         super().__init__()
+        cnn_ppi_stem_type = convert_str_to_enum(cnn_ppi_stem_type, enum_class=StemType)
+        pe_size_init = convert_str_to_enum(pe_size_init, enum_class=PacketSizeInitEnum)
+        pe_ipt_processing = convert_str_to_enum(pe_ipt_processing, enum_class=ProcessIPT)
+        conv_normalization = convert_str_to_enum(conv_normalization, enum_class=NormalizationEnum)
+        linear_normalization = convert_str_to_enum(linear_normalization, enum_class=NormalizationEnum)
+        cnn_ppi_global_pool = convert_str_to_enum(cnn_ppi_global_pool, enum_class=GlobalPoolEnum)
+        cnn_ppi_dropout_type = convert_str_to_enum(cnn_ppi_dropout_type, enum_class=DropoutType)
         if ppi_input_channels != 3:
             raise ValueError("ppi_input_channels must be 3 for now")
         if use_mlp_flowstats and flowstats_input_size == 0:
