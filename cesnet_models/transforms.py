@@ -68,7 +68,7 @@ class ClipAndScalePPI(nn.Module):
     Parameters:
         psizes_scaler_enum: What scaler should be used for packet sizes. Options are standard, robust, minmax, and no-scaling.
         ipt_scaler_enum: What scaler should be used for inter-packet times. Options are standard, robust, minmax, and no-scaling.
-        pszies_min: Clip packet sizes to this minimum value.
+        psizes_min: Clip packet sizes to this minimum value.
         psizes_max: Clip packet sizes to this maximum value.
         ipt_min: Clip inter-packet times to this minimum value.
         ipt_max: Clip inter-packet times to this maximum value.
@@ -77,7 +77,7 @@ class ClipAndScalePPI(nn.Module):
     """
     psizes_scaler: StandardScaler | RobustScaler | MinMaxScaler | None
     ipt_scaler: StandardScaler | RobustScaler | MinMaxScaler | None
-    pszies_min: int
+    psizes_min: int
     psizes_max: int
     ipt_min: int
     ipt_max: int
@@ -85,7 +85,7 @@ class ClipAndScalePPI(nn.Module):
     def __init__(self,
                  psizes_scaler_enum: ScalerEnum | str = ScalerEnum.STANDARD,
                  ipt_scaler_enum: ScalerEnum | str = ScalerEnum.STANDARD,
-                 pszies_min: int = 1,
+                 psizes_min: int = 1,
                  psizes_max: int = 1500,
                  ipt_min: int = 0,
                  ipt_max: int = 65000,
@@ -112,7 +112,7 @@ class ClipAndScalePPI(nn.Module):
             self.ipt_scaler = None
         else:
             raise ValueError(f"ipt_scaler_enum must be one of {ScalerEnum.__members__}")
-        self.pszies_min = pszies_min
+        self.psizes_min = psizes_min
         self.psizes_max = psizes_max
         self.ipt_max = ipt_max
         self.ipt_min = ipt_min
@@ -133,7 +133,7 @@ class ClipAndScalePPI(nn.Module):
         ppi_channels = x_ppi.shape[-1]
         x_ppi = x_ppi.reshape(-1, ppi_channels)
         x_ppi[:, PPI_IPT_POS] = x_ppi[:, PPI_IPT_POS].clip(max=self.ipt_max, min=self.ipt_min)
-        x_ppi[:, PPI_SIZE_POS] = x_ppi[:, PPI_SIZE_POS].clip(max=self.psizes_max, min=self.pszies_min)
+        x_ppi[:, PPI_SIZE_POS] = x_ppi[:, PPI_SIZE_POS].clip(max=self.psizes_max, min=self.psizes_min)
         padding_mask = x_ppi[:, PPI_DIR_POS] == 0 # Mask of zero padding
         if self.ipt_scaler is not None:
             x_ppi[:, PPI_IPT_POS] = self.ipt_scaler.transform(x_ppi[:, PPI_IPT_POS].reshape(-1, 1)).reshape(-1) # type: ignore
@@ -148,7 +148,7 @@ class ClipAndScalePPI(nn.Module):
         d = {
             "psizes_scaler_enum": str(self._psizes_scaler_enum),
             "psizes_scaler_attrs": get_scaler_attrs(self.psizes_scaler) if self.psizes_scaler is not None else None,
-            "pszies_min": self.pszies_min,
+            "psizes_min": self.psizes_min,
             "psizes_max": self.psizes_max,
             "ipt_scaler_enum": str(self._ipt_scaler_enum),
             "ipt_scaler_attrs": get_scaler_attrs(self.ipt_scaler) if self.ipt_scaler is not None else None,
@@ -158,7 +158,7 @@ class ClipAndScalePPI(nn.Module):
         return d
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(psizes_scaler={self._psizes_scaler_enum}, ipt_scaler={self._ipt_scaler_enum}, pszies_min={self.pszies_min}, psizes_max={self.psizes_max}, ipt_min={self.ipt_min}, ipt_max={self.ipt_max})"
+        return f"{self.__class__.__name__}(psizes_scaler={self._psizes_scaler_enum}, ipt_scaler={self._ipt_scaler_enum}, psizes_min={self.psizes_min}, psizes_max={self.psizes_max}, ipt_min={self.ipt_min}, ipt_max={self.ipt_max})"
 
 class ClipAndScaleFlowstats(nn.Module):
     """

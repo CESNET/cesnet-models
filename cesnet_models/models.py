@@ -47,7 +47,7 @@ class MM_CESNET_V2_Weights(WeightsEnum):
             "ppi_transform": ClipAndScalePPI(
                 psizes_scaler_enum="standard",
                 psizes_scaler_attrs={"mean_": [473.2243172415956], "scale_": [529.8190065488045]},
-                pszies_min=1,
+                psizes_min=1,
                 psizes_max=1460,
                 ipt_scaler_enum="standard",
                 ipt_scaler_attrs={"mean_": [105.15864160400703], "scale_": [1061.1513005552956]},
@@ -143,7 +143,7 @@ class MM_CESNET_V1_Weights(WeightsEnum):
             "ppi_transform": ClipAndScalePPI(
                 psizes_scaler_enum="standard",
                 psizes_scaler_attrs={"mean_": [708.3937210483823],"scale_": [581.2441777831351]},
-                pszies_min=1,
+                psizes_min=1,
                 psizes_max=1460,
                 ipt_scaler_enum="standard",
                 ipt_scaler_attrs={"mean_": [228.10927542399668],"scale_": [1517.1576685053515]},
