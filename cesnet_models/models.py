@@ -2,40 +2,88 @@ from typing import Optional
 
 import numpy as np
 
-from cesnet_models._models_meta import _CESNET_QUIC22_102_CLASSES, _CESNET_TLS22_191_CLASSES
+from cesnet_models._models_meta import (_CESNET_QUIC22_102_CLASSES,
+                                        _CESNET_QUIC22_WEEK46_DOMAIN_SPLIT,
+                                        _CESNET_TLS22_191_CLASSES)
+from cesnet_models.architectures.embedding_model_wrapper import EmbeddingModel
 from cesnet_models.architectures.multimodal_cesnet import Multimodal_CESNET, NormalizationEnum
+from cesnet_models.architectures.multimodal_cesnet_enhanced import (GlobalPoolEnum,
+                                                                    Multimodal_CESNET_Enhanced,
+                                                                    PacketSizeInitEnum, ProcessIPT,
+                                                                    StemType)
 from cesnet_models.helpers import Weights, WeightsEnum
 from cesnet_models.transforms import ClipAndScaleFlowstats, ClipAndScalePPI, NormalizeHistograms
 
 
-def _multimodal_cesnet(model_configuration: dict,
-                       weights: Optional[WeightsEnum],
-                       num_classes: Optional[int],
-                       flowstats_input_size: Optional[int],
-                       ppi_input_channels: Optional[int],
-                       model_dir: Optional[str],) -> Multimodal_CESNET:
-    if weights is None:
-        if num_classes is None:
-            raise ValueError("num_classes must be provided when weights are not provided")
-        if flowstats_input_size is None:
-            raise ValueError("flowstats_input_size must be provided when weights are not provided")
-        if ppi_input_channels is None:
-            raise ValueError("ppi_input_channels must be provided when weights are not provided")
-    if weights is not None:
-        if num_classes is not None and num_classes != weights.value.meta["num_classes"]:
-            raise ValueError(f"Based on pre-trained weights, num_classes should be {weights.value.meta['num_classes']} but got {num_classes}")
-        if flowstats_input_size is not None and flowstats_input_size != weights.value.meta["flowstats_input_size"]:
-            raise ValueError(f"Based on pre-trained weights, flowstats_input_size should be {weights.value.meta['flowstats_input_size']} but got {flowstats_input_size}")
-        if ppi_input_channels is not None and ppi_input_channels != weights.value.meta["ppi_input_channels"]:
-            raise ValueError(f"Based on pre-trained weights, ppi_input_channels should be {weights.value.meta['ppi_input_channels']} but got {ppi_input_channels}")
-        num_classes = weights.value.meta["num_classes"]
-        flowstats_input_size = weights.value.meta["flowstats_input_size"]
-        ppi_input_channels = weights.value.meta["ppi_input_channels"]
-    assert num_classes is not None and flowstats_input_size is not None and ppi_input_channels is not None
+class Model_30pktTCNET_256_Weights(WeightsEnum):
+    CESNET_QUIC22_Week46_Domains = Weights(
+        bucket_url="https://liberouter.org/datazoo/download?bucket=cesnet-models",
+        file_name="30pktTCNET_256_CESNET_QUIC22_Week46_Domains.pth",
+        transforms={
+            "ppi_transform": ClipAndScalePPI(
+                psizes_scaler_enum="no-scaling",
+                psizes_scaler_attrs=None,
+                psizes_min=1,
+                psizes_max=1500,
+                ipt_scaler_enum="no-scaling",
+                ipt_scaler_attrs=None,
+                ipt_min=0,
+                ipt_max=65000,),
+            "flowstats_transform": None,
+            "flowstats_phist_transform": None,
+        },
+        meta={
+            "train_dataset": "CESNET-QUIC22",
+            "train_dataset_size": "ORIG",
+            "train_period_name": "W-2022-46",
+            "domains": _CESNET_QUIC22_WEEK46_DOMAIN_SPLIT,
+            "ppi_input_channels": 3,
+            "num_params": 1_004_117,
+            "paper_doi": "",
+            "description":  "",
+        }
+    )
+    DEFAULT = CESNET_QUIC22_Week46_Domains
 
-    model = Multimodal_CESNET(**model_configuration, num_classes=num_classes, flowstats_input_size=flowstats_input_size, ppi_input_channels=ppi_input_channels)
+def model_30pktTCNET_256(weights: Optional[Model_30pktTCNET_256_Weights] = None,
+                         model_dir: Optional[str] = None) -> EmbeddingModel:
+    """
+    """
+    architecture_params = {
+        "use_mlp_flowstats": False,
+        "init_weights": True,
+        "cnn_ppi_stem_type": StemType.EMBED,
+        "pe_size_embedding": 20,
+        "pe_size_include_dir": False,
+        "pe_size_init": PacketSizeInitEnum.PLE,
+        "pe_size_ple_bin_size": 100,
+        "pe_ipt_processing": ProcessIPT.EMBED,
+        "pe_ipt_embedding": 10,
+        "pe_onehot_dirs": True,
+        "conv_normalization": NormalizationEnum.BATCH_NORM,
+        "linear_normalization": NormalizationEnum.BATCH_NORM,
+        "cnn_ppi_channels": [192, 256, 384, 448],
+        "cnn_ppi_strides": [1, 1, 1, 1],
+        "cnn_ppi_kernel_sizes": [7, 7, 5, 3],
+        "cnn_ppi_use_stdconv": False,
+        "cnn_ppi_downsample_avg": True,
+        "cnn_ppi_blocks_dropout": 0.3,
+        "cnn_ppi_first_bottle_ratio": 0.25,
+        "cnn_ppi_global_pool": GlobalPoolEnum.GEM_3_LEARNABLE,
+        "cnn_ppi_global_pool_act": False,
+        "cnn_ppi_global_pool_dropout": 0.0,
+        "use_mlp_shared": True,
+        "mlp_shared_size": 448,
+        "mlp_shared_dropout": 0.0
+    }
+    embedding_size = 256
+
+    backbone_model = Multimodal_CESNET_Enhanced(**architecture_params, save_psizes_hist=True)
+    model = EmbeddingModel(backbone_model, embedding_size=embedding_size)
     if weights is not None:
-        model.load_state_dict(weights.get_state_dict(model_dir=model_dir))
+        state_dict = weights.get_state_dict(model_dir=model_dir)
+        state_dict.pop("arcface_module.W", None)
+        model.load_state_dict(state_dict)
         model.eval()
     return model
 
@@ -86,6 +134,37 @@ class MM_CESNET_V2_Weights(WeightsEnum):
         }
     )
     DEFAULT = CESNET_QUIC22_Week44
+
+def _multimodal_cesnet(model_configuration: dict,
+                       weights: Optional[WeightsEnum],
+                       num_classes: Optional[int],
+                       flowstats_input_size: Optional[int],
+                       ppi_input_channels: Optional[int],
+                       model_dir: Optional[str],) -> Multimodal_CESNET:
+    if weights is None:
+        if num_classes is None:
+            raise ValueError("num_classes must be provided when weights are not provided")
+        if flowstats_input_size is None:
+            raise ValueError("flowstats_input_size must be provided when weights are not provided")
+        if ppi_input_channels is None:
+            raise ValueError("ppi_input_channels must be provided when weights are not provided")
+    if weights is not None:
+        if num_classes is not None and num_classes != weights.value.meta["num_classes"]:
+            raise ValueError(f"Based on pre-trained weights, num_classes should be {weights.value.meta['num_classes']} but got {num_classes}")
+        if flowstats_input_size is not None and flowstats_input_size != weights.value.meta["flowstats_input_size"]:
+            raise ValueError(f"Based on pre-trained weights, flowstats_input_size should be {weights.value.meta['flowstats_input_size']} but got {flowstats_input_size}")
+        if ppi_input_channels is not None and ppi_input_channels != weights.value.meta["ppi_input_channels"]:
+            raise ValueError(f"Based on pre-trained weights, ppi_input_channels should be {weights.value.meta['ppi_input_channels']} but got {ppi_input_channels}")
+        num_classes = weights.value.meta["num_classes"]
+        flowstats_input_size = weights.value.meta["flowstats_input_size"]
+        ppi_input_channels = weights.value.meta["ppi_input_channels"]
+    assert num_classes is not None and flowstats_input_size is not None and ppi_input_channels is not None
+
+    model = Multimodal_CESNET(**model_configuration, num_classes=num_classes, flowstats_input_size=flowstats_input_size, ppi_input_channels=ppi_input_channels)
+    if weights is not None:
+        model.load_state_dict(weights.get_state_dict(model_dir=model_dir))
+        model.eval()
+    return model
 
 def mm_cesnet_v2(weights: Optional[MM_CESNET_V2_Weights] = None,
                  model_dir: Optional[str] = None,

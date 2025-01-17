@@ -314,7 +314,7 @@ def build_cnn_ppi_stem(stem_type: StemType,
         ]
         stem_output_channels = out_channels
     if stem_type == StemType.EMBED or stem_type == StemType.EMBED_CONV:
-        # Packet Size Embedding
+        # Packet size embedding
         packet_size_nn_embedding = nn.Embedding(num_embeddings=1500 * (2 if pe_size_include_dir else 1) + 1, embedding_dim=pe_size_embedding, padding_idx=1500 if pe_size_include_dir else 0)
         ple_size_bins = list(range(0, 1500, pe_size_ple_bin_size))
         if pe_size_init != PacketSizeInitEnum.RANDOM:
@@ -352,8 +352,8 @@ def build_cnn_ppi_stem(stem_type: StemType,
                             if bin_idx >= 1:
                                 inital_embedding[:bin_idx] = 1
                     packet_size_nn_embedding.weight.data[i, :] = inital_embedding
-        # IPT Embedding
         if pe_ipt_processing == ProcessIPT.EMBED:
+            # PLE initialization of IPT embeddings
             if pe_ipt_embedding == 4:
                 ipt_bins_sections = (
                     torch.cat((torch.arange(0, 105, step=5), torch.arange(110, 260, step=10))),
@@ -446,7 +446,7 @@ class Multimodal_CESNET_Enhanced(nn.Module):
                        conv_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, linear_normalization: NormalizationEnum = NormalizationEnum.BATCH_NORM, group_norm_groups: int = 16,
                        cnn_ppi_channels: tuple[int, ...] = (192, 256, 384, 448), cnn_ppi_strides: tuple[int, ...] = (1, 1, 1, 1), cnn_ppi_kernel_sizes: tuple[int, ...] = (7, 7, 5, 3),
                        cnn_ppi_use_stdconv: bool = False, cnn_ppi_downsample_avg: bool = True, cnn_ppi_blocks_dropout: float = 0.3, cnn_ppi_first_bottle_ratio: float = 0.25, cnn_ppi_dropout_type: DropoutType = DropoutType.REGULAR,
-                       cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.MAX, cnn_ppi_global_pool_act: bool = False, cnn_ppi_global_pool_dropout: float = 0.0,
+                       cnn_ppi_global_pool: GlobalPoolEnum = GlobalPoolEnum.GEM_3_LEARNABLE, cnn_ppi_global_pool_act: bool = False, cnn_ppi_global_pool_dropout: float = 0.0,
                        use_mlp_flowstats: bool = False, mlp_flowstats_size1: int = 256, mlp_flowstats_size2: int = 64, mlp_flowstats_num_hidden: int = 1, mlp_flowstats_dropout: float = 0.0,
                        use_mlp_shared: bool = True, mlp_shared_size: int = 448, mlp_shared_dropout: float = 0.0,
                        save_psizes_hist: bool = False,
