@@ -537,6 +537,7 @@
 <li>Training of a neural network from scratch with data transformations - <a href="https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/example_train_nn.ipynb">example_train_nn.ipynb</a></li>
 <li>Evaluate a pre-trained neural network I (TLS) - <a href="https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/reproduce_tls.ipynb">reproduce_tls.ipynb</a></li>
 <li>Evaluate a pre-trained neural network II (QUIC) - <a href="https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/reproduce_quic.ipynb">reproduce_quic.ipynb</a></li>
+<li>Multi-dataset evaluation of the 30pktTCNET_256 model <a href="https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/cross_dataset_evaluation.ipynb">cross_dataset_evaluation.ipynb</a></li>
 </ul>
 <h2 id="code-snippets">Code snippets</h2>
 <p><div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cesnet_models.models</span> <span class="kn">import</span> <span class="n">MM_CESNET_V2_Weights</span><span class="p">,</span> <span class="n">mm_cesnet_v2</span>
@@ -544,7 +545,7 @@
 <span class="n">pretrained_weights</span> <span class="o">=</span> <span class="n">MM_CESNET_V2_Weights</span><span class="o">.</span><span class="n">CESNET_QUIC22_Week44</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">mm_cesnet_v2</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">pretrained_weights</span><span class="p">,</span> <span class="n">model_dir</span><span class="o">=</span><span class="s2">&quot;models/&quot;</span><span class="p">)</span>
 </code></pre></div>
-This code will download pre-trained weights into the specified folder and initialize the mm-CESNET-v2 model. Available pre-trained weights for this model are listed in the MM_CESNET_V2_Weights enum and are named based on the dataset and training time period. When weights are specified, the model is set in the <a href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.eval">evaluation mode</a> by default using <code>model.eval()</code>. To train the model, you should first set it back in the training mode with <code>model.train()</code>.</p>
+This code will download pre-trained weights into the specified folder and initialize the mm-CESNET-v2 model. Available pre-trained weights for this model are listed in the MM_CESNET_V2_Weights enum and are named based on the dataset and training time period. When weights are specified, the model is returned in the <a href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.eval">evaluation mode</a>. To train the model, you should first set it back in the training mode with <code>model.train()</code>.</p>
 
 
   
