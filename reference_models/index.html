@@ -427,12 +427,18 @@
     30pktTCNET_256
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="30pktTCNET_256">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#models.model_30pktTCNET_256" class="md-nav__link">
     model_30pktTCNET_256()
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -451,22 +457,22 @@
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
+          <li class="md-nav__item">
   <a href="#models.mm_cesnet_v2" class="md-nav__link">
     mm_cesnet_v2()
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#models.mm_cesnet_v1" class="md-nav__link">
     mm_cesnet_v1()
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -537,12 +543,18 @@
     30pktTCNET_256
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="30pktTCNET_256">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#models.model_30pktTCNET_256" class="md-nav__link">
     model_30pktTCNET_256()
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -561,22 +573,22 @@
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
+          <li class="md-nav__item">
   <a href="#models.mm_cesnet_v2" class="md-nav__link">
     mm_cesnet_v2()
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#models.mm_cesnet_v1" class="md-nav__link">
     mm_cesnet_v1()
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -610,18 +622,18 @@
 
 
 
-<h2 id="models.model_30pktTCNET_256" class="doc doc-heading">
+<h3 id="models.model_30pktTCNET_256" class="doc doc-heading">
           <span class="doc doc-object-name doc-function-name">models.model_30pktTCNET_256</span>
 
 
-</h2>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><span class="n">model_30pktTCNET_256</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
   <div class="doc doc-contents first">
   
       <p>A single-modal neural network processing sequences of 30 packets and outputting 256-dimensional flow embeddings.
-For fine-tuning, consider using just the <code>backbone_model</code> attribute of the returned model (an instance of Multimodal_CESNET_Enhanced).</p>
+For fine-tuning, consider using just the <code>backbone_model</code> attribute (an instance of Multimodal_CESNET_Enhanced) of the returned model.</p>
 
 
 
@@ -719,7 +731,7 @@ For fine-tuning, consider using just the <code>backbone_model</code> attribute o
                          <span class="n">model_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EmbeddingModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A single-modal neural network processing sequences of 30 packets and outputting 256-dimensional flow embeddings.</span>
-<span class="sd">    For fine-tuning, consider using just the `backbone_model` attribute of the returned model (an instance of Multimodal_CESNET_Enhanced).</span>
+<span class="sd">    For fine-tuning, consider using just the `backbone_model` attribute (an instance of Multimodal_CESNET_Enhanced) of the returned model.</span>
 
 <span class="sd">    Parameters:</span>
 <span class="sd">        weights: If provided, the model will be initialized with these weights.</span>
@@ -788,11 +800,11 @@ For fine-tuning, consider using just the <code>backbone_model</code> attribute o
 
 
 
-<h2 id="models.mm_cesnet_v2" class="doc doc-heading">
+<h3 id="models.mm_cesnet_v2" class="doc doc-heading">
           <span class="doc doc-object-name doc-function-name">models.mm_cesnet_v2</span>
 
 
-</h2>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><span class="n">mm_cesnet_v2</span><span class="p">(</span>
     <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">model_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1010,11 +1022,11 @@ the <em>"Encrypted traffic classification: the QUIC case"</em> paper.</p>
 
 
 
-<h2 id="models.mm_cesnet_v1" class="doc doc-heading">
+<h3 id="models.mm_cesnet_v1" class="doc doc-heading">
           <span class="doc doc-object-name doc-function-name">models.mm_cesnet_v1</span>
 
 
-</h2>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><span class="n">mm_cesnet_v1</span><span class="p">(</span>
     <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">model_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
