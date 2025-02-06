@@ -10,15 +10,20 @@
 
 The goal of this project is to provide neural network architectures for traffic classification and their pre-trained weights.
 
-The newest network architecture is named Multi-modal CESNET v2 (mm-CESNET-v2) and is visualized in the following picture. See the [getting started](https://cesnet.github.io/cesnet-models/getting_started/) page and [models](https://cesnet.github.io/cesnet-models/reference_models/) reference for more information.
+The package provides two network architectures, 30pktTCNET and Multi-modal CESNET v2, both visualized in the following pictures. See the [getting started](https://cesnet.github.io/cesnet-models/getting_started/) page and [models](https://cesnet.github.io/cesnet-models/reference_models/) reference for more information.
 
 :frog: :frog: See a related project [CESNET DataZoo](https://github.com/CESNET/cesnet-datazoo) providing large TLS and QUIC traffic datasets. :frog: :frog:
 
 :notebook: :notebook: Example Jupyter notebooks are included in a separate [CESNET Traffic Classification Examples](https://github.com/CESNET/cesnet-tcexamples) repo. :notebook: :notebook:
 
+### 30pktTCNET
+<p align="center">
+    <img src="https://raw.githubusercontent.com/CESNET/cesnet-models/main/docs/images/30pktTCNET.png" width="800">
+</p>
+
 ### Multi-modal CESNET v2
 <p align="center">
-    <img src="https://raw.githubusercontent.com/CESNET/cesnet-models/main/docs/images/model-mm-cesnet-v2.png" width="450">
+    <img src="https://raw.githubusercontent.com/CESNET/cesnet-models/main/docs/images/model-mm-cesnet-v2.png" width="400">
 </p>
 
 ## Installation

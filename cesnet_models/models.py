@@ -48,6 +48,12 @@ class Model_30pktTCNET_256_Weights(WeightsEnum):
 def model_30pktTCNET_256(weights: Optional[Model_30pktTCNET_256_Weights] = None,
                          model_dir: Optional[str] = None) -> EmbeddingModel:
     """
+    A single-modal neural network processing sequences of 30 packets and outputting 256-dimensional flow embeddings.
+    For fine-tuning, consider using just the `backbone_model` attribute (an instance of Multimodal_CESNET_Enhanced) of the returned model.
+
+    Parameters:
+        weights: If provided, the model will be initialized with these weights.
+        model_dir: If weights are provided, this folder will be used to store the weights.
     """
     architecture_params = {
         "use_mlp_flowstats": False,
