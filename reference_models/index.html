@@ -779,7 +779,7 @@ For fine-tuning, consider using just the <code>backbone_model</code> attribute (
   </div>
 
 </div><h2 id="multi-modal-models">Multi-modal models</h2>
-<p>When the <code>weights</code> parameter is not specified when using (<a class="autorefs autorefs-internal" href="#models.mm_cesnet_v1"><code>mm_cesnet_v1</code></a> and <a class="autorefs autorefs-internal" href="#models.mm_cesnet_v2"><code>mm_cesnet_v2</code></a>), the model will be initialized with random weights and the following arguments become required:</p>
+<p>When the <code>weights</code> parameter is not specified, the model will be initialized with random weights and the following arguments become required:</p>
 <ul>
 <li><code>num_classes</code> - the number of classes, which defines the output size of the last linear layer.</li>
 <li><code>flowstats_input_size</code> - the number of flow statistics features and, therefore, the input size of the first linear layer processing them.</li>
@@ -791,7 +791,7 @@ For fine-tuning, consider using just the <code>backbone_model</code> attribute (
 <li>batch_ppi <code>torch.tensor (B, ppi_input_channels, 30)</code> - batch size of <code>B</code> and  the length of PPI sequences is required to be 30.</li>
 <li>batch_flowstats <code>torch.tensor (B, flowstats_input_size)</code></li>
 </ul>
-<p>All Jupyter notebooks listed on the <a class="autorefs autorefs-internal" href="../getting_started/#getting-started">getting started</a> page show how to feed data into the models.</p>
+<p>Jupyter notebooks listed on the <a class="autorefs autorefs-internal" href="../getting_started/#getting-started">getting started</a> page show how to feed data into multi-modal models.</p>
 
 
 
