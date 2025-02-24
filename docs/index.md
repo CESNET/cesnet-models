@@ -19,10 +19,14 @@ An older network architecture, which apart from packet sequences also utilizes f
 
 Models from the following papers are included:
 
-* [Fine-grained TLS services classification with reject option](https://doi.org/10.1016/j.comnet.2022.109467) <br>
-Jan Luxemburk and Tomáš Čejka <br>
-Computer Networks, 2023
+* [Universal Embedding Function for Traffic Classification via QUIC Domain Recognition Pretraining: A Transfer Learning Success](https://doi.org/10.48550/arXiv.2502.12930) <br>
+Jan Luxemburk, Karel Hynek, Richard Plný, and Tomáš Čejka <br>
+arXiv preprint, 2025
 
 * [Encrypted traffic classification: the QUIC case](https://doi.org/10.23919/TMA58422.2023.10199052) <br>
 Jan Luxemburk and Karel Hynek <br>
 2023 7th Network Traffic Measurement and Analysis Conference (TMA)
+
+* [Fine-grained TLS services classification with reject option](https://doi.org/10.1016/j.comnet.2022.109467) <br>
+Jan Luxemburk and Tomáš Čejka <br>
+Computer Networks, 2023
