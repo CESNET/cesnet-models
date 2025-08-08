@@ -17,6 +17,6 @@ The `cesnet-models` package requires Python >=3.10.
 
 | Name         | Version  |
 |--------------|----------|
-| numpy        | <2.0     |
+| numpy        |          |
 | scikit-learn |          |
 | torch        | >=1.10   |
