@@ -6,7 +6,6 @@ Example Jupyter notebooks are provided at [https://github.com/CESNET/cesnet-tcex
 * Training of a neural network from scratch with data transformations - [example_train_nn.ipynb](https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/example_train_nn.ipynb)
 * Evaluate a pre-trained neural network I (TLS) - [reproduce_tls.ipynb](https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/reproduce_tls.ipynb)
 * Evaluate a pre-trained neural network II (QUIC) - [reproduce_quic.ipynb](https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/reproduce_quic.ipynb)
-* Multi-dataset evaluation of the 30pktTCNET_256 model - [cross_dataset_embedding_function.ipynb](https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/cross_dataset_embedding_function.ipynb)
 
 ## Code snippets
 

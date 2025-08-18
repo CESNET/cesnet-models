@@ -2,8 +2,7 @@
 All models have the following behavior. When the `weights` parameter is specified, pre-trained weights will be downloaded and cached in the `model_dir` folder. The returned model will be in the [evaluation mode](https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.eval).
 
 ## 30pktTCNET_256
-
-An example of how to feed data into this model is provided in a Jupyter notebook with multi-dataset evaluation - [cross_dataset_embedding_function.ipynb](https://nbviewer.org/github/CESNET/cesnet-tcexamples/blob/main/notebooks/cross_dataset_embedding_function.ipynb).
+The newest architecture processes packet sequences of length 30 and produces flow embeddings in the embedding space R<sup>256</sup>. Refer to [arXiv preprint](https://arxiv.org/pdf/2502.12930) for more information about the model.
 
 ::: models.model_30pktTCNET_256
     options:
