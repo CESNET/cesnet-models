@@ -21,7 +21,7 @@ Models from the following papers are included:
 
 * [Universal Embedding Function for Traffic Classification via QUIC Domain Recognition Pretraining: A Transfer Learning Success](https://doi.org/10.48550/arXiv.2502.12930) <br>
 Jan Luxemburk, Karel Hynek, Richard Plný, and Tomáš Čejka <br>
-arXiv preprint, 2025
+IEEE Transactions on Network and Service Management, 2025
 
 * [Encrypted traffic classification: the QUIC case](https://doi.org/10.23919/TMA58422.2023.10199052) <br>
 Jan Luxemburk and Karel Hynek <br>

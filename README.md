@@ -14,7 +14,9 @@ The package provides two network architectures, 30pktTCNET and Multi-modal CESNE
 
 :frog: :frog: See a related project [CESNET DataZoo](https://github.com/CESNET/cesnet-datazoo) providing large TLS and QUIC traffic datasets. :frog: :frog:
 
-:notebook: :notebook: Example Jupyter notebooks are included in a separate [CESNET Traffic Classification Examples](https://github.com/CESNET/cesnet-tcexamples) repo. :notebook: :notebook:
+:notebook: :notebook: Example Jupyter notebooks are included in a separate [Traffic Classification Examples](https://github.com/CESNET/cesnet-tcexamples) repository. :notebook: :notebook:
+
+:rocket: :rocket: [Transfer Learning Codebase](https://github.com/CESNET/tc-transfer/) for reproducing experiments from our paper — covering ten downstream traffic classification tasks with three transfer approaches (k-NN, linear probing, and full model fine-tuning). :rocket: :rocket:
 
 ### 30pktTCNET
 <p align="center">
@@ -46,7 +48,7 @@ Models from the following papers are included:
 
 * [Universal Embedding Function for Traffic Classification via QUIC Domain Recognition Pretraining: A Transfer Learning Success](https://doi.org/10.48550/arXiv.2502.12930) <br>
 Jan Luxemburk, Karel Hynek, Richard Plný, and Tomáš Čejka <br>
-arXiv preprint, 2025
+IEEE Transactions on Network and Service Management, 2025
 
 * [Encrypted traffic classification: the QUIC case](https://doi.org/10.23919/TMA58422.2023.10199052) <br>
 Jan Luxemburk and Karel Hynek <br>
