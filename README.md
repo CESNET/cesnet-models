@@ -16,7 +16,7 @@ The package provides two network architectures, 30pktTCNET and Multi-modal CESNE
 
 :notebook: :notebook: Example Jupyter notebooks are included in a separate [Traffic Classification Examples](https://github.com/CESNET/cesnet-tcexamples) repository. :notebook: :notebook:
 
-:rocket: :rocket: [Transfer Learning Codebase](https://github.com/CESNET/tc-transfer/) for reproducing experiments from our paper — covering ten downstream traffic classification tasks with three transfer approaches (k-NN, linear probing, and full model fine-tuning). :rocket: :rocket:
+:rocket: :rocket: [Transfer Learning Codebase](https://github.com/CESNET/tc-transfer/) for reproducing experiments from our [TNSM paper](https://doi.org/10.48550/arXiv.2502.12930) — covering ten downstream traffic classification tasks with three transfer approaches (k-NN, linear probing, and full model fine-tuning). :rocket: :rocket:
 
 ### 30pktTCNET
 <p align="center">
